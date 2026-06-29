@@ -14,6 +14,7 @@ The project is being polished as a portfolio-grade Android project: first with r
 - Sleep analysis based on heart rate, blood oxygen, and step signals from STM32 hardware.
 - Outdoor running flow with countdown, live tracking, distance, duration, and calorie summary.
 - STM32 device connection over Wi-Fi hotspot and TCP data channel.
+- Hardware-free demo mode that simulates STM32 vitals, weekly steps, battery, and sleep data.
 - Weather lookup and sync-to-device flow.
 - Local persistence with Room, Kotlin coroutines, Flow, and SharedPreferences.
 
@@ -81,7 +82,7 @@ The device module expects an STM32 smart-device hotspot and a TCP endpoint, defa
 tcp://192.168.4.1:8080
 ```
 
-For portfolio review, the next planned milestone is a built-in demo mode that simulates STM32 heart rate, blood oxygen, step, sleep, and battery data so reviewers can experience the full health-data loop without physical hardware.
+For portfolio review, the device screen also includes a demo mode that simulates STM32 heart rate, blood oxygen, step, sleep, weekly-step, and battery data. Reviewers can experience the full health-data loop without physical hardware.
 
 ## Roadmap
 
@@ -89,9 +90,9 @@ For portfolio review, the next planned milestone is a built-in demo mode that si
 - [x] Local Room persistence for users, notes, food, sleep, weekly steps, and exercise records.
 - [x] STM32 Wi-Fi/TCP device data integration.
 - [ ] GitHub repository polish: README, ignore rules, clean initial commit, screenshots.
-- [ ] Fix unit-test task and add GitHub Actions CI.
+- [x] Fix unit-test task and add GitHub Actions CI.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
-- [ ] Add demo mode for hardware-free review.
+- [x] Add demo mode for hardware-free review.
 - [ ] Replace destructive Room migrations with explicit migrations.
 - [ ] Harden release security: permissions, cleartext traffic, API key handling, and privacy notes.
 

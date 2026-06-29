@@ -694,6 +694,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun syncLatestDeviceData() {
+        if (_isDemoDeviceMode.value) {
+            applyStm32DevicePayload(buildDemoDevicePayload())
+            return
+        }
+
         if (!_isConnected.value && !refreshStm32WifiConnectionFromSystem()) {
             _deviceDataText.value = "请先连接 HRB_AP 热点；如果已在系统 Wi-Fi 里连上 HRB_AP，请回到 App 点刷新/重连数据"
             return
@@ -1235,6 +1240,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isConnected = MutableStateFlow(false)
     val isConnected = _isConnected.asStateFlow()
 
+    private val _isDemoDeviceMode = MutableStateFlow(false)
+    val isDemoDeviceMode = _isDemoDeviceMode.asStateFlow()
+
     private val _isScanningWifi = MutableStateFlow(false)
     val isScanningWifi = _isScanningWifi.asStateFlow()
 
@@ -1258,6 +1266,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateStm32DataEndpoint(endpoint: String) {
         _stm32DataEndpoint.value = endpoint
+    }
+
+    fun startDemoDeviceMode() {
+        stopStm32DataListener()
+        currentNetworkCallback?.let {
+            runCatching { connectivityManager.unregisterNetworkCallback(it) }
+        }
+        runCatching { connectivityManager.bindProcessToNetwork(null) }
+
+        currentNetwork = null
+        currentNetworkCallback = null
+        pendingConnectionSsid = null
+        _isDemoDeviceMode.value = true
+        _isConnected.value = true
+        _isFetchingDeviceData.value = false
+        _connectedSsid.value = "Demo STM32"
+
+        applyStm32DevicePayload(buildDemoDevicePayload())
+    }
+
+    private fun buildDemoDevicePayload(): Stm32DevicePayload {
+        val now = System.currentTimeMillis()
+        val minuteSeed = ((now / 60_000) % 60).toInt()
+        val heartRate = 72 + minuteSeed % 12
+        val bloodOxygen = 97 + minuteSeed % 2
+        val steps = 6_400 + minuteSeed * 37
+        val weeklySteps = listOf(6840, 7920, 9560, 8120, 10340, 11880, steps)
+
+        return Stm32DevicePayload(
+            heartRate = heartRate,
+            bloodOxygen = bloodOxygen,
+            steps = steps,
+            batteryLevel = 86 - minuteSeed % 9,
+            weeklySteps = weeklySteps,
+            sleepPayload = HardwareSleepPayload(
+                score = 86,
+                dataPoints = listOf(4f, 6f, 8f, 7f, 6f, 5f, 4f),
+                details = SleepHardwareDetails(
+                    bedTime = "23:18",
+                    wakeTime = "07:06",
+                    deepSleepMinutes = 124,
+                    wakeCount = 2
+                )
+            ),
+            hasHeartRate = true,
+            hasBloodOxygen = true,
+            hasSteps = true
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -1453,6 +1509,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ssid: String,
         password: String
     ) {
+        _isDemoDeviceMode.value = false
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             connectToStm32WifiAndroid10Plus(ssid, password)
         } else {
@@ -1589,6 +1647,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         currentNetwork = null
         currentNetworkCallback = null
         pendingConnectionSsid = null
+        _isDemoDeviceMode.value = false
         _isConnected.value = false
         _isFetchingDeviceData.value = false
         _connectedSsid.value = ""

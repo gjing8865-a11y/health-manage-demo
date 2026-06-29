@@ -86,6 +86,7 @@ fun DeviceMainContent(
     val context = LocalContext.current
 
     val isConnected by viewModel.isConnected.collectAsState()
+    val isDemoDeviceMode by viewModel.isDemoDeviceMode.collectAsState()
     val isScanningWifi by viewModel.isScanningWifi.collectAsState()
     val wifiList by viewModel.wifiList.collectAsState()
     val connectedSsid by viewModel.connectedSsid.collectAsState()
@@ -416,8 +417,13 @@ fun DeviceMainContent(
                                         )
                                 )
                                 Spacer(Modifier.width(6.dp))
+                                val connectionText = when {
+                                    !isConnected -> "未连接"
+                                    isDemoDeviceMode -> "Demo 模式：$connectedSsid"
+                                    else -> "已连接：$connectedSsid"
+                                }
                                 Text(
-                                    if (isConnected) "已连接：$connectedSsid" else "未连接",
+                                    connectionText,
                                     color = if (isConnected) PrimaryTeal else Color.Gray,
                                     fontSize = 12.sp
                                 )
@@ -504,6 +510,21 @@ fun DeviceMainContent(
                             color = PrimaryTeal
                         )
                     }
+                }
+
+                TextButton(
+                    onClick = {
+                        if (isDemoDeviceMode) {
+                            viewModel.disconnectDevice()
+                        } else {
+                            viewModel.startDemoDeviceMode()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = if (isDemoDeviceMode) "退出 Demo 数据模式" else "无硬件体验 Demo 数据",
+                        color = if (isDemoDeviceMode) Color(0xFFFF8A80) else PrimaryTeal
+                    )
                 }
 
                 Spacer(Modifier.height(16.dp))
