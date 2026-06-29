@@ -62,6 +62,7 @@ For a fuller technical overview, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md
 For a quick interviewer path, see [docs/PORTFOLIO_REVIEW.md](docs/PORTFOLIO_REVIEW.md).
 For pre-share verification, see [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md).
 For emulator screenshots, see [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
+For privacy and release-security notes, see [docs/SECURITY_PRIVACY.md](docs/SECURITY_PRIVACY.md).
 
 ## Getting Started
 
@@ -133,3 +134,5 @@ For portfolio review, the device screen also includes a demo mode that simulates
 This app handles health-related data. API keys and local machine paths must stay in `local.properties`, which is ignored by Git. Build outputs and APKs are also ignored because generated artifacts can contain compiled constants. Android cloud backup and device-transfer extraction are disabled for local health data.
 
 Before publishing a public portfolio repository, rotate any API keys that were previously used in local builds.
+
+See [docs/SECURITY_PRIVACY.md](docs/SECURITY_PRIVACY.md) for the full public-repo security and privacy checklist.

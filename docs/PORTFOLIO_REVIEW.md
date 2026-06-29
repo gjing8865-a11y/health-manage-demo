@@ -8,15 +8,17 @@ project quickly without owning the STM32 hardware.
 1. `README.md` for the product scope, tech stack, setup, and roadmap.
 2. `docs/SCREENSHOTS.md` for emulator screenshots of the core review flow.
 3. `docs/ARCHITECTURE.md` for the current architecture and refactor direction.
-4. `app/src/main/java/com/example/healthmanager/device/` for the extracted
+4. `docs/SECURITY_PRIVACY.md` for health-data, API-key, backup, and release
+   security notes.
+5. `app/src/main/java/com/example/healthmanager/device/` for the extracted
    STM32 parser and demo data factory.
-5. `app/src/main/java/com/example/healthmanager/data/remote/` for API data
+6. `app/src/main/java/com/example/healthmanager/data/remote/` for API data
    sources.
-6. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
+7. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
    logic.
-7. `app/src/test/java/com/example/healthmanager/` for unit tests covering
+8. `app/src/test/java/com/example/healthmanager/` for unit tests covering
    device parsing, demo data, remote data sources, and sleep estimation.
-8. GitHub Actions for build and unit-test evidence on every push.
+9. GitHub Actions for build and unit-test evidence on every push.
 
 ## Reviewer Demo Path
 
@@ -58,6 +60,8 @@ The repository now demonstrates more than a small UI demo:
 - Security cleanup: legacy storage permissions removed and cleartext traffic
   restricted to the STM32 local device IP; Android backup/transfer disabled for
   local health data.
+- Public privacy/security notes covering local health data, API keys, backup,
+  permissions, and production release steps.
 
 ## Remaining Improvements
 

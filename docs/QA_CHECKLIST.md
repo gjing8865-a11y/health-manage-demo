@@ -45,3 +45,4 @@ Use this checklist before sharing the repository or recording screenshots.
 - Confirm Android backup and device-transfer extraction are disabled for local health data.
 - Confirm cleartext traffic is restricted to the STM32 local device IP.
 - Confirm Room schema files are generated under `app/schemas`.
+- Review `docs/SECURITY_PRIVACY.md` before sharing a public build or release.
