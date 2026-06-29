@@ -55,7 +55,6 @@ The repository now demonstrates more than a small UI demo:
   calculators with tests.
 - Heart-rate alert timing extracted into a domain policy with tests.
 - GitHub Actions CI for debug build and unit tests.
-- Dependabot configuration for Gradle and GitHub Actions dependency updates.
 - Emulator screenshots documenting the dashboard, STM32 demo mode, and sleep
   analysis flow.
 - Public-repo hygiene: ignored local secrets, sample local properties, and docs.
