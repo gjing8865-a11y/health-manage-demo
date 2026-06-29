@@ -54,6 +54,7 @@ The repository now demonstrates more than a small UI demo:
 - Exercise summary and food nutrition statistics extracted into domain
   calculators with tests.
 - GitHub Actions CI for debug build and unit tests.
+- Dependabot configuration for Gradle and GitHub Actions dependency updates.
 - Emulator screenshots documenting the dashboard, STM32 demo mode, and sleep
   analysis flow.
 - Public-repo hygiene: ignored local secrets, sample local properties, and docs.
