@@ -552,7 +552,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         Log.w("STM32_DATA", "数据监听断开，准备重连: ${e.message}", e)
                         withContext(Dispatchers.Main) {
                             if (_isConnected.value) {
-                                _deviceDataText.value = "手环数据通道暂时无新数据，正在自动重连...\n${formatStm32Error(e)}"
+                                _deviceDataText.value = "手环数据通道暂无新数据，正在自动重连...\n${formatStm32Error(e)}"
                             }
                         }
                         delay(900)
@@ -2308,7 +2308,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             if (!weatherRemoteDataSource.hasApiKey) {
                 Log.e("WEATHER", "weatherKey 为空")
-                _currentWeather.value = "天气Key未配置"
+                _currentWeather.value = "天气 Key 未配置"
                 _isWeatherSyncing.value = false
                 return@launch
             }

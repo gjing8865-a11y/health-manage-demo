@@ -95,13 +95,13 @@ dependencies {
     ksp("androidx.room:room-compiler:$roomVersion")
 
     implementation("com.google.android.gms:play-services-location:21.0.1")
-    // 扩展图标库 (用于获取类似 Lucide 的丰富图标)
+    // Material Icons Extended 图标库
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
-    // 图片加载 (类似 React 的 <img>)
+    // Coil 图片加载
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("no.nordicsemi.android:ble:2.7.2")
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    // 用于解析 JSON 数据
+    // Gson JSON 解析
     implementation("com.google.code.gson:gson:2.10.1")
 }

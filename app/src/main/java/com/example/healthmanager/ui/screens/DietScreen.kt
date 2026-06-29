@@ -298,7 +298,7 @@ fun DietScreen(viewModel: MainViewModel) {
             AlertDialog(
                 onDismissRequest = { viewModel.dismissError() },
                 title = { Text("识别失败") },
-                text = { Text("AI 暂时没看清这份食物，要再试一次吗？") },
+                text = { Text("AI 没有识别清楚这份食物，要再试一次吗？") },
                 confirmButton = {
                     TextButton(onClick = { viewModel.retryAnalysis() }) {
                         Text("重试", color = PrimaryTeal)

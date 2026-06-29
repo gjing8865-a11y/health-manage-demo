@@ -74,7 +74,7 @@ fun DashboardScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // A. 顶部 Header
+        // 顶部信息区
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
@@ -146,7 +146,7 @@ fun DashboardScreen(
             }
         }
 
-        // B. 周报入口
+        // 健康周报入口
         Card(
             colors = CardDefaults.cardColors(containerColor = TextPrimary),
             shape = RoundedCornerShape(20.dp),
@@ -176,7 +176,7 @@ fun DashboardScreen(
             }
         }
 
-        // C. 步数圆环
+        // 步数进度圆环
         HealthCard {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
@@ -217,7 +217,7 @@ fun DashboardScreen(
             }
         }
 
-        // D. 今日摘要条
+        // 今日摘要
         HealthCard {
             Text(
                 "今日摘要",
@@ -250,7 +250,7 @@ fun DashboardScreen(
             }
         }
 
-        // E. 开始运动卡
+        // 运动入口
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
@@ -326,7 +326,7 @@ fun DashboardScreen(
             }
         }
 
-        // F. 心率 / 血氧
+        // 心率与血氧
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             HealthCard(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.example.healthmanager.ui.theme.BgLight
 import com.example.healthmanager.ui.theme.SurfaceWhite
 
-// 1. 统一风格的卡片容器
+// 通用卡片容器
 @Composable
 fun HealthCard(
     modifier: Modifier = Modifier,
@@ -25,13 +25,13 @@ fun HealthCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp) // 轻微阴影
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
 }
 
-// 2. 自定义圆形进度条 (Canvas绘制)
+// 圆形进度条（Canvas 绘制）
 @Composable
 fun CircularStepProgress(
     modifier: Modifier = Modifier,
@@ -40,15 +40,15 @@ fun CircularStepProgress(
     strokeWidth: Dp = 12.dp
 ) {
     Canvas(modifier = modifier) {
-        // 画背景圆环
+        // 背景圆环
         drawArc(
-            color = BgLight, // 使用浅灰色做底
+            color = BgLight,
             startAngle = -90f,
             sweepAngle = 360f,
             useCenter = false,
             style = Stroke(width = strokeWidth.toPx())
         )
-        // 画进度圆环
+        // 进度圆环
         drawArc(
             color = color,
             startAngle = -90f,
