@@ -1,6 +1,6 @@
 package com.example.healthmanager.device
 
-import com.example.healthmanager.viewmodel.SleepHardwareDetails
+import com.example.healthmanager.domain.SleepHardwareDetails
 import org.json.JSONArray
 import org.json.JSONObject
 

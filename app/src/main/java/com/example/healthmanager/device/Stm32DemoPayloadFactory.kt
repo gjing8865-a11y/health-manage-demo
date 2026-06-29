@@ -1,6 +1,6 @@
 package com.example.healthmanager.device
 
-import com.example.healthmanager.viewmodel.SleepHardwareDetails
+import com.example.healthmanager.domain.SleepHardwareDetails
 
 object Stm32DemoPayloadFactory {
     fun build(): Stm32DevicePayload =

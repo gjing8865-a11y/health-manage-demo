@@ -32,6 +32,7 @@ import com.example.healthmanager.domain.HeartRateAlertPolicy
 import com.example.healthmanager.domain.HeartRateAlertState
 import com.example.healthmanager.domain.SleepEstimate
 import com.example.healthmanager.domain.SleepEstimateCalculator
+import com.example.healthmanager.domain.SleepHardwareDetails
 import com.example.healthmanager.domain.SleepSignalSample
 import com.example.healthmanager.domain.WeatherLocationCandidate
 import com.example.healthmanager.domain.WeatherLocationResolver

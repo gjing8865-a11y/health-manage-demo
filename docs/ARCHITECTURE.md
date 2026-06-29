@@ -63,6 +63,7 @@ sleep trend points, and demo device payload presentation data.
 Pure domain logic now lives under `domain/`:
 
 - sleep estimation from heart rate, blood oxygen, and step samples
+- shared sleep hardware detail model used by device parsing and domain logic
 - latest/weekly exercise summary calculation
 - food calorie and macronutrient statistics
 - sustained high-heart-rate alert policy
