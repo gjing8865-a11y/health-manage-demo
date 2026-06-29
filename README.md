@@ -115,6 +115,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Add architecture notes for portfolio review.
 - [x] Add a repository layer in front of Room DAOs.
 - [x] Extract STM32 payload parsing and cover it with unit tests.
+- [x] Extract STM32 endpoint resolution and cover it with unit tests.
 - [x] Extract deterministic STM32 demo payload generation for hardware-free review.
 - [x] Move food-recognition HTTP calls into a remote data source with fallback tests.
 - [x] Move weather HTTP calls into a remote data source with request tests.

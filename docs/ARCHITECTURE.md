@@ -99,6 +99,7 @@ data
 device
   -> Wi-Fi/TCP connection
   -> STM32 payload parser
+  -> STM32 endpoint resolver
   -> deterministic demo payload factory
 ```
 

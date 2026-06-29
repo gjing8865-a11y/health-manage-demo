@@ -48,6 +48,7 @@ The repository now demonstrates more than a small UI demo:
 - Compose multi-screen Android app with local persistence.
 - Room-backed health records with a repository layer in front of DAOs.
 - Wi-Fi/TCP device integration with a testable STM32 payload parser.
+- STM32 endpoint resolution extracted from the ViewModel and covered by tests.
 - Hardware-free demo mode with deterministic factory tests.
 - Food and weather API calls extracted into remote data sources with tests.
 - Sleep-estimation logic extracted into a domain component with tests.

@@ -23,6 +23,7 @@ import com.example.healthmanager.data.remote.WeatherRemoteDataSource
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32DevicePayload
+import com.example.healthmanager.device.Stm32EndpointResolver
 import com.example.healthmanager.device.Stm32PayloadParser
 import com.example.healthmanager.domain.ExerciseSummaryCalculator
 import com.example.healthmanager.domain.FoodStatsCalculator
@@ -88,10 +89,6 @@ private data class WeatherLocationCandidate(
 )
 
 private const val STM32_WIFI_CONNECT_TIMEOUT_MS = 30_000
-private const val STM32_MAX_CANDIDATE_HOSTS = 4
-private const val STM32_DEFAULT_HOST = "192.168.4.1"
-private const val STM32_DEFAULT_ENDPOINT = "tcp://192.168.4.1:8080"
-private const val STM32_DEFAULT_TCP_PORT = 8080
 private const val STM32_TCP_CONNECT_TIMEOUT_MS = 2_500
 private const val STM32_TCP_READ_TIMEOUT_MS = 1200
 private const val STM32_TCP_FIRST_PACKET_TIMEOUT_MS = 20_000L
@@ -99,9 +96,6 @@ private const val STM32_TCP_IDLE_RECONNECT_MS = 15_000L
 private const val SLEEP_SIGNAL_WINDOW_MS = 12 * 60 * 60 * 1000L
 private const val SLEEP_ESTIMATE_SAVE_INTERVAL_MS = 60_000L
 private const val SLEEP_ESTIMATE_MIN_SAMPLES = 3
-private val stm32FallbackHosts = listOf(
-    STM32_DEFAULT_HOST
-)
 
 private val municipalityWeatherNames = setOf("北京", "上海", "天津", "重庆")
 
@@ -547,7 +541,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _isFetchingDeviceData.value = true
-        _deviceDataText.value = "正在连接手环 TCP 数据通道 $STM32_DEFAULT_ENDPOINT，等待 8080 端口推送..."
+        _deviceDataText.value = "正在连接手环 TCP 数据通道 ${Stm32EndpointResolver.DEFAULT_ENDPOINT}，等待 8080 端口推送..."
 
         val listenerToken = ++stm32DataListenerToken
         stm32DataListenerJob = viewModelScope.launch(Dispatchers.IO) {
@@ -597,7 +591,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun buildStm32DataUrls(): List<String> {
-        val manualEndpoint = normalizeStm32Endpoint(_stm32DataEndpoint.value)
         val linkProperties = currentNetwork
             ?.let { network -> connectivityManager.getLinkProperties(network) }
 
@@ -608,71 +601,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val dhcpGateway = runCatching {
             val gateway = wifiManager.dhcpInfo?.gateway ?: 0
-            gateway.takeIf { it != 0 }?.let(::formatIpv4Address)
+            gateway.takeIf { it != 0 }?.let(Stm32EndpointResolver::formatIpv4Address)
         }.getOrNull()
 
-        val hosts = (
-            stm32FallbackHosts +
-                routeGateways +
-                listOfNotNull(dhcpGateway)
-            )
-            .map { it.trim() }
-            .filter(::isUsableIpv4Host)
-            .distinct()
-            .take(STM32_MAX_CANDIDATE_HOSTS)
-
-        val tcpEndpoints = hosts.map { host ->
-            "tcp://$host:$STM32_DEFAULT_TCP_PORT"
-        }
-
-        return (listOfNotNull(manualEndpoint) + tcpEndpoints)
-            .distinct()
-    }
-
-    private fun normalizeStm32Endpoint(rawEndpoint: String): String? {
-        val endpoint = rawEndpoint.trim().trimEnd('/')
-        if (endpoint.isBlank()) return null
-
-        val lowerEndpoint = endpoint.lowercase(Locale.ROOT)
-        val withScheme = when {
-            lowerEndpoint.startsWith("tcp://") ||
-                    lowerEndpoint.startsWith("http://") ||
-                    lowerEndpoint.startsWith("https://") -> endpoint
-
-            endpoint.contains("/") -> "http://$endpoint"
-            else -> "tcp://$endpoint"
-        }
-
-        if (withScheme.startsWith("tcp://", ignoreCase = true)) {
-            val uri = URI(withScheme)
-            val host = uri.host ?: return null
-            val port = if (uri.port > 0) uri.port else STM32_DEFAULT_TCP_PORT
-            return "tcp://$host:$port"
-        }
-
-        return if (URI(withScheme).path.isNullOrBlank()) {
-            "$withScheme/data"
-        } else {
-            withScheme
-        }
-    }
-
-    private fun formatIpv4Address(address: Int): String {
-        return listOf(
-            address and 0xff,
-            address shr 8 and 0xff,
-            address shr 16 and 0xff,
-            address shr 24 and 0xff
-        ).joinToString(".")
-    }
-
-    private fun isUsableIpv4Host(host: String): Boolean {
-        if (host == "0.0.0.0") return false
-
-        val parts = host.split(".")
-        return parts.size == 4 && parts.all { part ->
-            part.toIntOrNull()?.let { it in 0..255 } == true
-        }
+        return Stm32EndpointResolver.buildDataUrls(
+            rawManualEndpoint = _stm32DataEndpoint.value,
+            discoveredHosts = routeGateways + listOfNotNull(dhcpGateway)
+        )
     }
 
     private fun readStm32DevicePayload(urls: List<String>): Stm32DevicePayload {
@@ -687,7 +622,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val host = uri.host ?: throw IllegalStateException("TCP 地址缺少 host: $url")
                     return readRawTcpStm32Payload(
                         host = host,
-                        port = if (uri.port > 0) uri.port else STM32_DEFAULT_TCP_PORT
+                        port = if (uri.port > 0) uri.port else Stm32EndpointResolver.DEFAULT_TCP_PORT
                     )
                 } else {
                     return readStm32DevicePayloadFromUrl(url)
@@ -716,7 +651,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val host = uri.host ?: throw IllegalStateException("TCP 地址缺少 host: $url")
                     listenRawTcpStm32Payloads(
                         host = host,
-                        port = if (uri.port > 0) uri.port else STM32_DEFAULT_TCP_PORT
+                        port = if (uri.port > 0) uri.port else Stm32EndpointResolver.DEFAULT_TCP_PORT
                     )
                     return
                 } else {
@@ -1059,7 +994,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _deviceDataText = MutableStateFlow("暂无设备数据")
     val deviceDataText = _deviceDataText.asStateFlow()
 
-    private val _stm32DataEndpoint = MutableStateFlow(STM32_DEFAULT_ENDPOINT)
+    private val _stm32DataEndpoint = MutableStateFlow(Stm32EndpointResolver.DEFAULT_ENDPOINT)
     val stm32DataEndpoint = _stm32DataEndpoint.asStateFlow()
 
     fun updateStm32DataEndpoint(endpoint: String) {
