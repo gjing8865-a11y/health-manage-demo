@@ -1,0 +1,8 @@
+## Copy this file to local.properties and fill in your local values.
+## Android Studio normally writes sdk.dir automatically.
+sdk.dir=C\:\\Users\\<your-user>\\AppData\\Local\\Android\\Sdk
+
+## Optional API keys. Leave blank to run non-network demo flows.
+ZHIPU_API_KEY=
+WEATHER_API_KEY=
+AMAP_API_KEY=
