@@ -83,7 +83,7 @@ The next refactor should split orchestration by responsibility:
 ui/screens
   -> feature ViewModels
 domain
-  -> use cases and validation
+  -> use cases, validation, and sleep-estimation logic
 data
   -> repositories
   -> Room data sources
@@ -103,6 +103,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `AppViewModel` still owns too many responsibilities.
+- Sleep-estimation logic now lives in the domain layer, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - Some legacy comments contain encoding artifacts and should be cleaned.
