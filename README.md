@@ -36,6 +36,7 @@ The project is being polished as a portfolio-grade Android project: first with r
 app/src/main/java/com/example/healthmanager
 +-- MainActivity.kt                 # App entry and navigation
 +-- viewmodel.kt                    # Current app state and business orchestration
++-- data/repository/                # Repository layer over local persistence
 +-- database/                       # Room database and DAO definitions
 +-- model/                          # Room entities
 +-- ui/screens/                     # Compose feature screens
@@ -94,6 +95,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [ ] GitHub repository polish: README, ignore rules, clean initial commit, screenshots.
 - [x] Fix unit-test task and add GitHub Actions CI.
 - [x] Add architecture notes for portfolio review.
+- [x] Add a repository layer in front of Room DAOs.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
 - [x] Remove legacy storage permissions and restrict cleartext traffic to the STM32 device IP.

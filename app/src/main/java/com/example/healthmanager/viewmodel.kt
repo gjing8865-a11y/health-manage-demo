@@ -12,6 +12,12 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthmanager.BuildConfig
+import com.example.healthmanager.data.repository.ExerciseRepository
+import com.example.healthmanager.data.repository.FoodRepository
+import com.example.healthmanager.data.repository.NoteRepository
+import com.example.healthmanager.data.repository.SleepRepository
+import com.example.healthmanager.data.repository.UserRepository
+import com.example.healthmanager.data.repository.WeeklyStepRepository
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.model.User
 import com.google.android.gms.location.LocationServices
@@ -139,12 +145,13 @@ private data class FoodModelConfig(
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val userDao = AppDatabase.getDatabase(application).userDao()
-    private val noteDao = AppDatabase.getDatabase(application).noteDao()
-    private val foodDao = AppDatabase.getDatabase(application).foodDao()
-    private val weeklyStepDao = AppDatabase.getDatabase(application).weeklyStepDao()
-    private val sleepDao = AppDatabase.getDatabase(application).sleepDao()
-    private val exerciseDao = AppDatabase.getDatabase(application).exerciseDao()
+    private val database = AppDatabase.getDatabase(application)
+    private val userRepository = UserRepository(database.userDao())
+    private val noteRepository = NoteRepository(database.noteDao())
+    private val foodRepository = FoodRepository(database.foodDao())
+    private val weeklyStepRepository = WeeklyStepRepository(database.weeklyStepDao())
+    private val sleepRepository = SleepRepository(database.sleepDao())
+    private val exerciseRepository = ExerciseRepository(database.exerciseDao())
     private val client = OkHttpClient()
     private val deviceClient = client.newBuilder()
         .connectTimeout(1200, TimeUnit.MILLISECONDS)
@@ -175,7 +182,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _userName.value = newName
         val acc = requireLoggedInAccount() ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            userDao.updateNickName(acc, newName)
+            userRepository.updateNickName(acc, newName)
         }
     }
 
@@ -183,7 +190,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _userSignature.value = newSignature
         val acc = requireLoggedInAccount() ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            userDao.updateSignature(acc, newSignature)
+            userRepository.updateSignature(acc, newSignature)
         }
     }
 
@@ -192,7 +199,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _avatarUri.value = uri
         val acc = requireLoggedInAccount() ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            userDao.updateAvatar(acc, uri.toString())
+            userRepository.updateAvatar(acc, uri.toString())
         }
     }
 
@@ -205,7 +212,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val existingUser = userDao.getUserByAccount(account)
+                val existingUser = userRepository.getUserByAccount(account)
                 if (existingUser != null) {
                     withContext(Dispatchers.Main) {
                         onError("该账号已存在")
@@ -219,7 +226,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     avatarUri = "",
                     signature = "保持活力!"
                 )
-                userDao.registerUser(user)
+                userRepository.registerUser(user)
 
                 withContext(Dispatchers.Main) {
                     onSuccess()
@@ -240,7 +247,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val user = userDao.loginAndGetUser(account, password)
+                val user = userRepository.loginAndGetUser(account, password)
                 if (user == null) {
                     withContext(Dispatchers.Main) {
                         onError("账号或密码错误")
@@ -276,7 +283,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val user = userDao.getUserByAccount(savedAccount) ?: return@launch
+                val user = userRepository.getUserByAccount(savedAccount) ?: return@launch
 
                 _currentUserAccount.value = user.account
                 loadUserProfile(user)
@@ -370,7 +377,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadLatestExerciseRecordForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val record = exerciseDao.getLatestExerciseRecordByUser(account)
+            val record = exerciseRepository.getLatestExerciseRecordByUser(account)
 
             withContext(Dispatchers.Main) {
                 if (record == null) {
@@ -391,7 +398,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadWeeklyExerciseStatsForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val (startOfWeek, endOfWeek) = getCurrentWeekTimeRange()
-            val records = exerciseDao.getExerciseRecordsByUserInRange(
+            val records = exerciseRepository.getExerciseRecordsByUserInRange(
                 account = account,
                 startTime = startOfWeek,
                 endTime = endOfWeek
@@ -426,10 +433,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 calories = calories
             )
 
-            exerciseDao.insertExerciseRecord(record)
+            exerciseRepository.insertExerciseRecord(record)
 
             val (startOfWeek, endOfWeek) = getCurrentWeekTimeRange()
-            val weeklyRecords = exerciseDao.getExerciseRecordsByUserInRange(
+            val weeklyRecords = exerciseRepository.getExerciseRecordsByUserInRange(
                 account = account,
                 startTime = startOfWeek,
                 endTime = endOfWeek
@@ -470,7 +477,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadWeeklyRecordForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val record = weeklyStepDao.getLatestWeeklyRecordByUser(account)
+            val record = weeklyStepRepository.getLatestWeeklyRecordByUser(account)
 
             withContext(Dispatchers.Main) {
                 if (record == null) {
@@ -518,7 +525,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 day7 = data[6]
             )
 
-            weeklyStepDao.insertWeeklyRecord(record)
+            weeklyStepRepository.insertWeeklyRecord(record)
 
             withContext(Dispatchers.Main) {
                 _weeklyStepData.value = data
@@ -1777,7 +1784,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadFoodRecordsForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val records = foodDao.getFoodRecordsByUser(account)
+            val records = foodRepository.getFoodRecordsByUser(account)
             withContext(Dispatchers.Main) {
                 refreshFoodStats(records)
             }
@@ -2567,13 +2574,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     fat = item.fat
                 )
 
-                foodDao.insertFoodRecord(record)
+                foodRepository.insertFoodRecord(record)
 
                 lastSavedFoodFingerprint = fingerprint
                 lastSavedFoodTimeMillis = now
             }
 
-            val records = foodDao.getFoodRecordsByUser(account)
+            val records = foodRepository.getFoodRecordsByUser(account)
 
             withContext(Dispatchers.Main) {
                 refreshFoodStats(records)
@@ -2610,9 +2617,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 fat = fat
             )
 
-            foodDao.insertFoodRecord(record)
+            foodRepository.insertFoodRecord(record)
 
-            val records = foodDao.getFoodRecordsByUser(account)
+            val records = foodRepository.getFoodRecordsByUser(account)
             withContext(Dispatchers.Main) {
                 refreshFoodStats(records)
             }
@@ -2631,8 +2638,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val account = _currentUserAccount.value ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            foodDao.deleteFoodRecord(record)
-            val records = foodDao.getFoodRecordsByUser(account)
+            foodRepository.deleteFoodRecord(record)
+            val records = foodRepository.getFoodRecordsByUser(account)
 
             withContext(Dispatchers.Main) {
                 refreshFoodStats(records)
@@ -2696,8 +2703,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadSleepRecordForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val record = sleepDao.getLatestSleepRecordByUser(account)
-            val trend = sleepDao.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
+            val record = sleepRepository.getLatestSleepRecordByUser(account)
+            val trend = sleepRepository.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
 
             withContext(Dispatchers.Main) {
                 _sleepTrend.value = trend
@@ -2891,8 +2898,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 updatedAt = timestamp
             )
 
-            sleepDao.insertSleepRecord(record)
-            val trend = sleepDao.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
+            sleepRepository.insertSleepRecord(record)
+            val trend = sleepRepository.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
 
             withContext(Dispatchers.Main) {
                 _sleepTrend.value = trend
@@ -2918,8 +2925,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 dataPoints = packedData
             )
 
-            sleepDao.insertSleepRecord(record)
-            val trend = sleepDao.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
+            sleepRepository.insertSleepRecord(record)
+            val trend = sleepRepository.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
 
             withContext(Dispatchers.Main) {
                 _sleepScore.value = newScore
@@ -3203,7 +3210,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadNotesForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val notes = noteDao.getNotesByUserAccount(account)
+            val notes = noteRepository.getNotesByUserAccount(account)
             withContext(Dispatchers.Main) {
                 _noteHistory.value = notes.map { it.content }
             }
@@ -3232,9 +3239,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     content = content,
                     createdAt = sentAt
                 )
-                noteDao.insertNote(note)
+                noteRepository.insertNote(note)
 
-                val notes = noteDao.getNotesByUserAccount(account)
+                val notes = noteRepository.getNotesByUserAccount(account)
                 withContext(Dispatchers.Main) {
                     _noteHistory.value = notes.map { it.content }
                     _noteText.value = ""

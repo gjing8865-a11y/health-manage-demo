@@ -25,6 +25,7 @@ The app is a Kotlin Android application using Jetpack Compose and Material 3.
 MainActivity
   -> Compose navigation destinations
   -> AppViewModel
+       -> repositories
        -> Room DAOs
        -> SharedPreferences
        -> OkHttp / Gson weather and food APIs
@@ -34,9 +35,11 @@ MainActivity
 ```
 
 The current implementation intentionally favors a working end-to-end prototype:
-one central `AppViewModel` orchestrates local data, network calls, permissions,
-device connectivity, and screen state. This makes the demo easy to follow, but
-also makes the ViewModel too large for long-term maintenance.
+one central `AppViewModel` orchestrates network calls, permissions, device
+connectivity, and screen state. Local persistence now sits behind a thin
+repository layer, which makes the next ViewModel split safer and easier to test.
+The ViewModel is still too large for long-term maintenance, but data access is no
+longer wired directly to DAOs.
 
 ## Data And State
 
@@ -90,15 +93,13 @@ device
   -> demo data source
 ```
 
-Recommended first cuts:
+Recommended next cuts:
 
-1. Move Room access behind repositories such as `FoodRepository`,
-   `SleepRepository`, `ExerciseRepository`, and `UserRepository`.
-2. Move weather and food-recognition API calls into remote data sources.
-3. Extract STM32 payload parsing and demo payload generation from
+1. Move weather and food-recognition API calls into remote data sources.
+2. Extract STM32 payload parsing and demo payload generation from
    `AppViewModel`.
-4. Split screen-specific state into smaller ViewModels after repositories exist.
-5. Add focused unit tests around repositories, parsers, and data mapping.
+3. Split screen-specific state into smaller ViewModels after repositories exist.
+4. Add focused unit tests around repositories, parsers, and data mapping.
 
 ## Known Technical Debt
 
