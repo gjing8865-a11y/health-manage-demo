@@ -6,16 +6,17 @@ project quickly without owning the STM32 hardware.
 ## What To Look At First
 
 1. `README.md` for the product scope, tech stack, setup, and roadmap.
-2. `docs/ARCHITECTURE.md` for the current architecture and refactor direction.
-3. `app/src/main/java/com/example/healthmanager/device/` for the extracted
+2. `docs/SCREENSHOTS.md` for emulator screenshots of the core review flow.
+3. `docs/ARCHITECTURE.md` for the current architecture and refactor direction.
+4. `app/src/main/java/com/example/healthmanager/device/` for the extracted
    STM32 parser and demo data factory.
-4. `app/src/main/java/com/example/healthmanager/data/remote/` for API data
+5. `app/src/main/java/com/example/healthmanager/data/remote/` for API data
    sources.
-5. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
+6. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
    logic.
-6. `app/src/test/java/com/example/healthmanager/` for unit tests covering
+7. `app/src/test/java/com/example/healthmanager/` for unit tests covering
    device parsing, demo data, remote data sources, and sleep estimation.
-7. GitHub Actions for build and unit-test evidence on every push.
+8. GitHub Actions for build and unit-test evidence on every push.
 
 ## Reviewer Demo Path
 
@@ -49,6 +50,8 @@ The repository now demonstrates more than a small UI demo:
 - Food and weather API calls extracted into remote data sources with tests.
 - Sleep-estimation logic extracted into a domain component with tests.
 - GitHub Actions CI for debug build and unit tests.
+- Emulator screenshots documenting the dashboard, STM32 demo mode, and sleep
+  analysis flow.
 - Public-repo hygiene: ignored local secrets, sample local properties, and docs.
 - Security cleanup: legacy storage permissions removed and cleartext traffic
   restricted to the STM32 local device IP; Android backup/transfer disabled for
@@ -60,5 +63,5 @@ The project is intentionally still being improved. High-value next steps:
 
 - split `AppViewModel` into feature ViewModels
 - add historical Room migrations if pre-v9 upgrade support is required
-- capture stable screenshots or a short demo GIF
+- record a short demo GIF or video for the README
 - add production release signing and API-key handling notes

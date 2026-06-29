@@ -6,6 +6,18 @@ Qinglv Health Manager is an Android health-management app built with Kotlin and 
 
 The project is being polished as a portfolio-grade Android project: first with reliable GitHub setup and documentation, then with tests, CI, architecture refactoring, demo mode, and stronger privacy/security handling.
 
+## Demo Screenshots
+
+Screenshots are captured from an Android emulator with the hardware-free STM32 demo mode enabled. The full gallery is available in [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
+
+| Dashboard | Device Demo |
+| --- | --- |
+| <img src="docs/images/screen-01-launch.png" width="240" alt="Health dashboard screenshot"> | <img src="docs/images/screen-03-device-demo.png" width="240" alt="STM32 device demo screenshot"> |
+
+| Device Setup | Sleep Analysis |
+| --- | --- |
+| <img src="docs/images/screen-02-device.png" width="240" alt="Device setup screenshot"> | <img src="docs/images/screen-04-sleep-demo.png" width="240" alt="Sleep analysis screenshot"> |
+
 ## Highlights
 
 - Account registration, login, auto-login, and local profile data.
@@ -49,6 +61,7 @@ The current code works, but `viewmodel.kt` is intentionally listed as a refactor
 For a fuller technical overview, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 For a quick interviewer path, see [docs/PORTFOLIO_REVIEW.md](docs/PORTFOLIO_REVIEW.md).
 For pre-share verification, see [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md).
+For emulator screenshots, see [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md).
 
 ## Getting Started
 
@@ -94,7 +107,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Compose multi-screen health manager prototype.
 - [x] Local Room persistence for users, notes, food, sleep, weekly steps, and exercise records.
 - [x] STM32 Wi-Fi/TCP device data integration.
-- [ ] GitHub repository polish: README, ignore rules, clean initial commit, screenshots.
+- [x] GitHub repository polish: README, ignore rules, clean initial commit, screenshots.
 - [x] Add a portfolio review guide for recruiters and interviewers.
 - [x] Add a QA checklist for pre-share verification.
 - [x] Fix unit-test task and add GitHub Actions CI.
