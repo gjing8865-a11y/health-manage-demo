@@ -48,6 +48,7 @@ The current code works, but `viewmodel.kt` is intentionally listed as a refactor
 
 For a fuller technical overview, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 For a quick interviewer path, see [docs/PORTFOLIO_REVIEW.md](docs/PORTFOLIO_REVIEW.md).
+For pre-share verification, see [docs/QA_CHECKLIST.md](docs/QA_CHECKLIST.md).
 
 ## Getting Started
 
@@ -95,6 +96,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] STM32 Wi-Fi/TCP device data integration.
 - [ ] GitHub repository polish: README, ignore rules, clean initial commit, screenshots.
 - [x] Add a portfolio review guide for recruiters and interviewers.
+- [x] Add a QA checklist for pre-share verification.
 - [x] Fix unit-test task and add GitHub Actions CI.
 - [x] Add architecture notes for portfolio review.
 - [x] Add a repository layer in front of Room DAOs.

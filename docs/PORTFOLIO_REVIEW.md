@@ -9,9 +9,13 @@ project quickly without owning the STM32 hardware.
 2. `docs/ARCHITECTURE.md` for the current architecture and refactor direction.
 3. `app/src/main/java/com/example/healthmanager/device/` for the extracted
    STM32 parser and demo data factory.
-4. `app/src/test/java/com/example/healthmanager/device/` for unit tests covering
-   real device payload parsing and deterministic demo data.
-5. GitHub Actions for build and unit-test evidence on every push.
+4. `app/src/main/java/com/example/healthmanager/data/remote/` for API data
+   sources.
+5. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
+   logic.
+6. `app/src/test/java/com/example/healthmanager/` for unit tests covering
+   device parsing, demo data, remote data sources, and sleep estimation.
+7. GitHub Actions for build and unit-test evidence on every push.
 
 ## Reviewer Demo Path
 
@@ -42,10 +46,13 @@ The repository now demonstrates more than a small UI demo:
 - Room-backed health records with a repository layer in front of DAOs.
 - Wi-Fi/TCP device integration with a testable STM32 payload parser.
 - Hardware-free demo mode with deterministic factory tests.
+- Food and weather API calls extracted into remote data sources with tests.
+- Sleep-estimation logic extracted into a domain component with tests.
 - GitHub Actions CI for debug build and unit tests.
 - Public-repo hygiene: ignored local secrets, sample local properties, and docs.
 - Security cleanup: legacy storage permissions removed and cleartext traffic
-  restricted to the STM32 local device IP.
+  restricted to the STM32 local device IP; Android backup/transfer disabled for
+  local health data.
 
 ## Remaining Improvements
 
