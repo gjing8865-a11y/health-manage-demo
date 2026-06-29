@@ -90,14 +90,13 @@ data
 device
   -> Wi-Fi/TCP connection
   -> STM32 payload parser
-  -> demo data source
+  -> deterministic demo payload factory
 ```
 
 Recommended next cuts:
 
 1. Move weather and food-recognition API calls into remote data sources.
-2. Extract demo payload generation and device connection state from
-   `AppViewModel`.
+2. Extract device connection state from `AppViewModel`.
 3. Split screen-specific state into smaller ViewModels after repositories exist.
 4. Add focused unit tests around repositories and data mapping.
 

@@ -19,7 +19,7 @@ import com.example.healthmanager.data.repository.SleepRepository
 import com.example.healthmanager.data.repository.UserRepository
 import com.example.healthmanager.data.repository.WeeklyStepRepository
 import com.example.healthmanager.database.AppDatabase
-import com.example.healthmanager.device.HardwareSleepPayload
+import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32PayloadParser
 import com.example.healthmanager.model.User
@@ -545,7 +545,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun syncLatestDeviceData() {
         if (_isDemoDeviceMode.value) {
-            applyStm32DevicePayload(buildDemoDevicePayload())
+            applyStm32DevicePayload(Stm32DemoPayloadFactory.build())
             return
         }
 
@@ -942,6 +942,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun applyStm32DevicePayload(payload: Stm32DevicePayload) {
+        val sleepPayload = payload.sleepPayload
+
         if (payload.isHeartPacket && (payload.heartRate <= 0 || payload.bloodOxygen <= 0)) {
             _deviceDataText.value = "已收到手环心率数据包，但 hr/spo2 还是 null。\n请在手环心率页点击 Survey，并把手指放到传感器上，等手环测出有效心率和血氧后再刷新。"
             return
@@ -964,15 +966,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             updateWeeklyStepsFromDevice(payload.weeklySteps)
         }
 
-        payload.sleepPayload?.let { sleepPayload ->
+        sleepPayload?.let {
             updateSleepDataFromHardware(
-                newScore = sleepPayload.score,
-                newDataPoints = sleepPayload.dataPoints,
-                details = sleepPayload.details
+                newScore = it.score,
+                newDataPoints = it.dataPoints,
+                details = it.details
             )
         }
 
-        if (payload.sleepPayload == null) {
+        if (sleepPayload == null) {
             updateSleepEstimateFromVitals(
                 heartRate = _heartRate.value,
                 bloodOxygen = _bloodOxygen.value,
@@ -989,8 +991,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             appendLine("更新时间: $updatedAt")
             appendLine("步数: ${_steps.value}")
             _batteryLevel.value?.let { appendLine("电量: $it%") }
-            if (payload.sleepPayload != null) {
-                appendLine("睡眠评分: ${payload.sleepPayload.score}")
+            if (sleepPayload != null) {
+                appendLine("睡眠评分: ${sleepPayload.score}")
             } else {
                 appendLine("睡眠数据: 已根据心率和步数自动估算")
             }
@@ -1096,37 +1098,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isFetchingDeviceData.value = false
         _connectedSsid.value = "Demo STM32"
 
-        applyStm32DevicePayload(buildDemoDevicePayload())
-    }
-
-    private fun buildDemoDevicePayload(): Stm32DevicePayload {
-        val now = System.currentTimeMillis()
-        val minuteSeed = ((now / 60_000) % 60).toInt()
-        val heartRate = 72 + minuteSeed % 12
-        val bloodOxygen = 97 + minuteSeed % 2
-        val steps = 6_400 + minuteSeed * 37
-        val weeklySteps = listOf(6840, 7920, 9560, 8120, 10340, 11880, steps)
-
-        return Stm32DevicePayload(
-            heartRate = heartRate,
-            bloodOxygen = bloodOxygen,
-            steps = steps,
-            batteryLevel = 86 - minuteSeed % 9,
-            weeklySteps = weeklySteps,
-            sleepPayload = HardwareSleepPayload(
-                score = 86,
-                dataPoints = listOf(4f, 6f, 8f, 7f, 6f, 5f, 4f),
-                details = SleepHardwareDetails(
-                    bedTime = "23:18",
-                    wakeTime = "07:06",
-                    deepSleepMinutes = 124,
-                    wakeCount = 2
-                )
-            ),
-            hasHeartRate = true,
-            hasBloodOxygen = true,
-            hasSteps = true
-        )
+        applyStm32DevicePayload(Stm32DemoPayloadFactory.build())
     }
 
     @SuppressLint("MissingPermission")
