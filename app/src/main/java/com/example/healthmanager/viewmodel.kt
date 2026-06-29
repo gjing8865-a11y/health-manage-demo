@@ -19,6 +19,7 @@ import com.example.healthmanager.data.repository.SleepRepository
 import com.example.healthmanager.data.repository.UserRepository
 import com.example.healthmanager.data.repository.WeeklyStepRepository
 import com.example.healthmanager.data.remote.FoodRecognitionRemoteDataSource
+import com.example.healthmanager.data.remote.WeatherRemoteDataSource
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32DevicePayload
@@ -46,7 +47,6 @@ import java.io.ByteArrayOutputStream
 import java.net.InetSocketAddress
 import java.net.URI
 import java.net.Socket
-import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -132,6 +132,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val foodRecognitionRemoteDataSource = FoodRecognitionRemoteDataSource(
         client = client,
         apiKey = BuildConfig.ZHIPU_API_KEY.orEmpty()
+    )
+    private val weatherRemoteDataSource = WeatherRemoteDataSource(
+        client = client,
+        apiKey = BuildConfig.WEATHER_API_KEY.orEmpty()
     )
     private val deviceClient = client.newBuilder()
         .connectTimeout(1200, TimeUnit.MILLISECONDS)
@@ -2342,8 +2346,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _sedentaryInterval = MutableStateFlow(60)
     val sedentaryInterval = _sedentaryInterval.asStateFlow()
 
-    private val weatherKey = BuildConfig.WEATHER_API_KEY.orEmpty()
-
     private val _weatherUiState = MutableStateFlow(WeatherUiState())
     val weatherUiState = _weatherUiState.asStateFlow()
 
@@ -2728,7 +2730,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             _isWeatherSyncing.value = true
 
-            if (weatherKey.isBlank()) {
+            if (!weatherRemoteDataSource.hasApiKey) {
                 Log.e("WEATHER", "weatherKey 为空")
                 _currentWeather.value = "天气Key未配置"
                 _isWeatherSyncing.value = false
@@ -2741,26 +2743,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 for (queryCity in location.queryCities) {
                     try {
-                        val encodedCity = URLEncoder.encode(queryCity, "UTF-8")
-                        val url = "https://uapis.cn/api/v1/misc/weather?city=$encodedCity&key=$weatherKey&forecast=true&hourly=true&indices=true&extended=true"
-
-                        Log.d("WEATHER", "请求天气URL: $url")
-
-                        client.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-                            val body = resp.body?.string().orEmpty()
-                            Log.d("WEATHER", "天气接口返回: $body")
-
-                            if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
-                                throw IllegalStateException("天气接口返回HTML，不是JSON")
-                            }
-
-                            val json = JSONObject(body)
-                            resolvedState = parseWeatherState(
-                                json = json,
-                                displayCity = location.displayCity,
-                                queryCity = queryCity
-                            )
-                        }
+                        val json = weatherRemoteDataSource.fetchWeatherJson(queryCity)
+                        resolvedState = parseWeatherState(
+                            json = json,
+                            displayCity = location.displayCity,
+                            queryCity = queryCity
+                        )
 
                         if (resolvedState != null) break
                     } catch (e: Exception) {

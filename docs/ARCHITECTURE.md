@@ -28,7 +28,7 @@ MainActivity
        -> repositories
        -> Room DAOs
        -> SharedPreferences
-       -> OkHttp / Gson weather and food APIs
+       -> remote data sources for weather and food recognition
        -> WifiDeviceManager and TCP socket device channel
        -> StateFlow UI state
   -> Feature screens render state and send user events
@@ -38,9 +38,9 @@ The current implementation intentionally favors a working end-to-end prototype:
 one central `AppViewModel` orchestrates network calls, permissions, device
 connectivity, and screen state. Local persistence now sits behind a thin
 repository layer, which makes the next ViewModel split safer and easier to test.
-Food-recognition HTTP calls also sit behind a remote data source. The ViewModel
-is still too large for long-term maintenance, but data access is no longer wired
-directly to DAOs and model-provider fallback behavior is testable.
+Food-recognition and weather HTTP calls also sit behind remote data sources. The
+ViewModel is still too large for long-term maintenance, but data access is no
+longer wired directly to DAOs and provider behavior is testable.
 
 ## Data And State
 
@@ -96,10 +96,9 @@ device
 
 Recommended next cuts:
 
-1. Move weather API calls into a remote data source.
-2. Extract device connection state from `AppViewModel`.
-3. Split screen-specific state into smaller ViewModels after repositories exist.
-4. Add focused unit tests around repositories and data mapping.
+1. Extract device connection state from `AppViewModel`.
+2. Split screen-specific state into smaller ViewModels after repositories exist.
+3. Add focused unit tests around repositories and data mapping.
 
 ## Known Technical Debt
 
