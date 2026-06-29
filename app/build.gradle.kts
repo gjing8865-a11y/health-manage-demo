@@ -98,7 +98,7 @@ dependencies {
     // 扩展图标库 (用于获取类似 Lucide 的丰富图标)
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
     // 图片加载 (类似 React 的 <img>)
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("no.nordicsemi.android:ble:2.7.2")
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
