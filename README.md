@@ -47,6 +47,7 @@ app/src/main/java/com/example/healthmanager
 The current code works, but `viewmodel.kt` is intentionally listed as a refactor target. The next architecture step is to split it into feature ViewModels, repositories, local/remote data sources, and use cases.
 
 For a fuller technical overview, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+For a quick interviewer path, see [docs/PORTFOLIO_REVIEW.md](docs/PORTFOLIO_REVIEW.md).
 
 ## Getting Started
 
@@ -93,6 +94,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Local Room persistence for users, notes, food, sleep, weekly steps, and exercise records.
 - [x] STM32 Wi-Fi/TCP device data integration.
 - [ ] GitHub repository polish: README, ignore rules, clean initial commit, screenshots.
+- [x] Add a portfolio review guide for recruiters and interviewers.
 - [x] Fix unit-test task and add GitHub Actions CI.
 - [x] Add architecture notes for portfolio review.
 - [x] Add a repository layer in front of Room DAOs.
