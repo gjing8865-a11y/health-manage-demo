@@ -64,6 +64,7 @@ Pure domain logic now lives under `domain/`:
 - latest/weekly exercise summary calculation
 - food calorie and macronutrient statistics
 - sustained high-heart-rate alert policy
+- weather location candidate resolution
 
 ## Device Flow
 
@@ -112,7 +113,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `AppViewModel` still owns too many responsibilities.
-- Sleep, exercise, food-summary, and heart-rate alert calculations now live in the domain layer, but screen-level state still needs feature ViewModels.
+- Sleep, exercise, food-summary, heart-rate alert, and weather-location calculations now live in the domain layer, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - Some legacy comments contain encoding artifacts and should be cleaned.
