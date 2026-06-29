@@ -1,5 +1,7 @@
 # Qinglv Health Manager
 
+[![Android CI](https://github.com/gjing8865-a11y/health-manage-demo/actions/workflows/android-ci.yml/badge.svg)](https://github.com/gjing8865-a11y/health-manage-demo/actions/workflows/android-ci.yml)
+
 Qinglv Health Manager is an Android health-management app built with Kotlin and Jetpack Compose. It combines local health records, diet recognition, outdoor exercise tracking, weather sync, and STM32 smart-device data into one mobile experience.
 
 The project is being polished as a portfolio-grade Android project: first with reliable GitHub setup and documentation, then with tests, CI, architecture refactoring, demo mode, and stronger privacy/security handling.
@@ -60,6 +62,14 @@ AMAP_API_KEY=
 ```powershell
 .\gradlew.bat :app:assembleDebug
 ```
+
+6. Run the local unit-test smoke check:
+
+```powershell
+.\gradlew.bat :app:testDebugUnitTest
+```
+
+If the Gradle test worker fails on Windows under a non-ASCII project path, run the project from an ASCII path or directory junction. The GitHub Actions workflow runs from an ASCII Linux path.
 
 The app can run without API keys for local data flows. AI food recognition, weather lookup, and map/provider-specific features require the corresponding keys.
 
