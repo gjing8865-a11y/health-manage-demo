@@ -122,6 +122,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract sleep-estimation domain logic and cover it with unit tests.
 - [x] Extract exercise summary calculation and cover it with unit tests.
 - [x] Extract food nutrition statistics and cover them with unit tests.
+- [x] Extract heart-rate alert policy and cover it with unit tests.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
 - [x] Remove legacy storage permissions and restrict cleartext traffic to the STM32 device IP.

@@ -53,6 +53,7 @@ The repository now demonstrates more than a small UI demo:
 - Sleep-estimation logic extracted into a domain component with tests.
 - Exercise summary and food nutrition statistics extracted into domain
   calculators with tests.
+- Heart-rate alert timing extracted into a domain policy with tests.
 - GitHub Actions CI for debug build and unit tests.
 - Dependabot configuration for Gradle and GitHub Actions dependency updates.
 - Emulator screenshots documenting the dashboard, STM32 demo mode, and sleep

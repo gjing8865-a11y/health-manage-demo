@@ -26,6 +26,8 @@ import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32PayloadParser
 import com.example.healthmanager.domain.ExerciseSummaryCalculator
 import com.example.healthmanager.domain.FoodStatsCalculator
+import com.example.healthmanager.domain.HeartRateAlertPolicy
+import com.example.healthmanager.domain.HeartRateAlertState
 import com.example.healthmanager.domain.SleepEstimate
 import com.example.healthmanager.domain.SleepEstimateCalculator
 import com.example.healthmanager.domain.SleepSignalSample
@@ -1444,25 +1446,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _weeklyRange = MutableStateFlow("")
     val weeklyRange = _weeklyRange.asStateFlow()
 
-    private var heartRateAlertStartTime = 0L
+    private var heartRateAlertState = HeartRateAlertState()
     private val _showHeartRateAlert = MutableStateFlow(false)
     val showHeartRateAlert = _showHeartRateAlert.asStateFlow()
 
     fun onHeartRateReceived(rate: Int, context: Context) {
         _heartRate.value = rate
-        if (rate > 120) {
-            if (heartRateAlertStartTime == 0L) {
-                heartRateAlertStartTime = System.currentTimeMillis()
-            }
-            if (System.currentTimeMillis() - heartRateAlertStartTime > 600000) {
-                if (!_showHeartRateAlert.value) {
-                    _showHeartRateAlert.value = true
-                    triggerVibration(context)
-                }
-            }
-        } else {
-            heartRateAlertStartTime = 0L
-            _showHeartRateAlert.value = false
+        val decision = HeartRateAlertPolicy.onSample(
+            rateBpm = rate,
+            nowMillis = System.currentTimeMillis(),
+            currentState = heartRateAlertState
+        )
+        heartRateAlertState = decision.state
+        _showHeartRateAlert.value = decision.state.visible
+
+        if (decision.shouldVibrate) {
+            triggerVibration(context)
         }
     }
 
@@ -1476,8 +1475,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun dismissHeartRateAlert() {
-        _showHeartRateAlert.value = false
-        heartRateAlertStartTime = System.currentTimeMillis()
+        heartRateAlertState = HeartRateAlertPolicy.dismiss(
+            currentState = heartRateAlertState,
+            nowMillis = System.currentTimeMillis()
+        )
+        _showHeartRateAlert.value = heartRateAlertState.visible
     }
     // endregion
 
