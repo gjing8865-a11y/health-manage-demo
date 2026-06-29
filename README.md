@@ -118,6 +118,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract STM32 endpoint resolution and cover it with unit tests.
 - [x] Extract deterministic STM32 demo payload generation for hardware-free review.
 - [x] Move food-recognition HTTP calls into a remote data source with fallback tests.
+- [x] Extract food-recognition prompt building and cover it with unit tests.
 - [x] Move weather HTTP calls into a remote data source with request tests.
 - [x] Extract weather location resolution and cover it with unit tests.
 - [x] Export Room schema and remove destructive migration fallback.

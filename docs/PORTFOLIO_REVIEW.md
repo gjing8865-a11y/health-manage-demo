@@ -51,6 +51,7 @@ The repository now demonstrates more than a small UI demo:
 - STM32 endpoint resolution extracted from the ViewModel and covered by tests.
 - Hardware-free demo mode with deterministic factory tests.
 - Food and weather API calls extracted into remote data sources with tests.
+- Food-recognition prompt construction extracted from the ViewModel with tests.
 - Weather location candidate resolution extracted into a domain component with tests.
 - Sleep-estimation logic extracted into a domain component with tests.
 - Exercise summary and food nutrition statistics extracted into domain

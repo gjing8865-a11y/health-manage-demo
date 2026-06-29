@@ -18,6 +18,7 @@ import com.example.healthmanager.data.repository.NoteRepository
 import com.example.healthmanager.data.repository.SleepRepository
 import com.example.healthmanager.data.repository.UserRepository
 import com.example.healthmanager.data.repository.WeeklyStepRepository
+import com.example.healthmanager.data.remote.FoodRecognitionPromptBuilder
 import com.example.healthmanager.data.remote.FoodRecognitionRemoteDataSource
 import com.example.healthmanager.data.remote.WeatherRemoteDataSource
 import com.example.healthmanager.database.AppDatabase
@@ -1597,178 +1598,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun buildFoodRecognitionPrompt(): String {
-        return """
-            你是一名专业的餐食识别和营养估算助手。
-            目标：只识别图片里真正能看到、准备食用或正在食用的食物和饮料，并给出准确、保守的中文菜名。
+    private fun buildFoodRecognitionPrompt(): String =
+        FoodRecognitionPromptBuilder.recognitionPrompt()
 
-            === 识别决策流程（必须按顺序进行） ===
-            步骤 A：先做"大类判别"，从画面整体特征确定主体属于哪一大类，不要直接跳到具体菜名。
-                - 海鲜/水产：是否能看到外壳、螯钳、虾尾、鱼鳍、贝壳、整只动物形态、海鲜常见的橙红色硬壳？
-                - 肉类菜肴：是否是切块/切片/丝/末的肉，且没有外壳，呈现炖、烧、炒、煎、烤的形态？
-                - 主食：米饭、面条、饺子、包子、馒头、粉、面包等？
-                - 蔬菜/沙拉：是否以叶菜、根茎菜、豆类为主？
-                - 汤/羹/粥
-                - 小吃/快餐：汉堡、薯条、炸鸡、披萨、热狗、寿司？
-                - 甜点/烘焙：蛋糕、面包、甜甜圈？
-                - 饮品：奶茶、果茶、咖啡、汽水、果汁？
-            步骤 B：在大类内部找最匹配的具体菜名，命名要简短、自然、中文、可直接展示。
-            步骤 C：若不能 100% 确定具体菜名，必须回退到更稳妥的"大类名+做法"，宁可命名保守，也不要硬猜成视觉相似的另一道菜。
+    private fun buildFoodReviewPrompt(initialResult: JSONObject): String =
+        FoodRecognitionPromptBuilder.reviewPrompt(initialResult)
 
-            === 严格防误判规则（重点） ===
-            1. 看到完整外壳、橙红/青黑色硬壳、明显的螯钳或八条腿 → 一定是螃蟹类（大闸蟹、梭子蟹、面包蟹），绝不能写成"红烧肉""卤肉""糖醋里脊"。
-            2. 看到完整虾身、虾头、虾尾、红色虾壳、长触须 → 一定是虾类（白灼虾、油焖大虾、小龙虾、皮皮虾），不要写成肉类。
-            3. 看到完整鱼形、鱼鳍、鱼眼、鱼尾 → 一定是鱼类（清蒸鱼、红烧鱼、烤鱼、酸菜鱼），不要写成肉块。
-            4. 看到贝壳类（扇贝、生蚝、蛤蜊、青口） → 必须按贝类命名，不要混到肉类。
-            5. "红烧肉"必须满足：方块状或片状的猪肉块、酱油色油亮酱汁、看不到任何外壳和螯钳腿。如果画面里能看到一丝甲壳/腿/螯，绝不能写成红烧肉。
-            6. 颜色相似不代表菜相同：螃蟹外壳是橙红色，红烧肉酱汁也是红色，必须靠"是否有壳/腿/螯"来区分。
-            7. 这类图片可能是家常菜、餐厅堂食、连锁餐饮、方便面、小吃、奶茶、果茶、咖啡、汽水，不只限家常菜。
-            8. 先判断场景类型 scene_type，只能从以下值中选择一个：single_dish、combo_meal、mixed_bowl、packaged_food、drink_only。
-            9. 如果是一碗或一盘里混合了很多食材、都裹着酱汁或辣油，优先归为 mixed_bowl，并把它识别成"整道菜"，不要拆成一堆配料。
-            10. 如果是托盘套餐、桌餐、多盘小吃场景，归为 combo_meal，并按独立容器拆分：杯、碗、盘、纸盒、篮子、锅都算独立食物载体。
-            11. 看到杯装饮品、奶茶杯、咖啡杯、带吸管饮料，必须把饮品单独作为一个 item 返回。
-            12. 看到韩式辣拌面、火鸡面、方便面样式的干拌面时，优先返回"火鸡面"或"韩式拌面"，不要误写成"意面"。
-            13. 对于辣油重、食材混在一起的大碗混合菜，如果无法 100% 确定地域菜名，优先返回保守但贴近的整道菜名称，例如"辣炒米粉""新疆炒米粉""麻辣拌""冒菜""麻辣香锅"，不要拆成豆腐、面条、鸡蛋等零散项。
-            14. 看到热狗、香肠、玉米热狗、芝士热狗时，不要误判成烤鱼或别的无关菜。
-            15. 如果无法确定非常具体的品牌或口味，可以返回更稳妥的名称，例如"奶茶""杯装饮料""寿司卷""牛肉饭""韩式拌面""热狗""清蒸蟹""清蒸鱼"。
-            16. 严格只返回 JSON，不要解释，不要代码块，不要 Markdown。
+    private fun buildFoodCoveragePrompt(currentFoods: List<PendingFoodItem>): String =
+        FoodRecognitionPromptBuilder.coveragePrompt(currentFoods.map { it.name })
 
-            === 常见水产/海鲜命名参考 ===
-            - 大闸蟹（青背、白肚、绑绳、个头较小，多为清蒸）
-            - 梭子蟹 / 面包蟹（壳形较扁或厚实，可能红烧、葱油、蒜蓉）
-            - 清蒸鱼 / 红烧鱼 / 烤鱼 / 酸菜鱼
-            - 白灼虾 / 油焖大虾 / 蒜蓉虾 / 小龙虾 / 麻辣小龙虾 / 皮皮虾
-            - 蒜蓉粉丝扇贝 / 烤生蚝 / 辣炒蛤蜊 / 青口贝
-
-            返回格式：
-            {
-              "scene_type": "single_dish",
-              "foods": [
-                {
-                  "name": "食物名称",
-                  "kcal": 180,
-                  "icon": "🍱",
-                  "carbs": 25,
-                  "protein": 4,
-                  "fat": 7
-                }
-              ]
-            }
-
-            要求：
-            1. foods 必须是数组
-            2. 每个 food 只包含 name、kcal、icon、carbs、protein、fat
-            3. kcal、carbs、protein、fat 都必须是单个整数
-            4. name 必须是简短、自然、可直接展示给用户的中文食物名
-            5. 绝不要返回与画面明显不相干的食物
-            6. 一旦看到外壳/螯/虾尾/鱼鳍等水产特征，绝不能输出任何"肉""红烧肉""卤肉""扣肉""里脊"等纯肉类菜名
-        """.trimIndent()
-    }
-
-    private fun buildFoodReviewPrompt(initialResult: JSONObject): String {
-        return """
-            你正在复核同一张餐食图片的识别结果，请重新对照原图检查是否漏识别、错分类或命名不自然。
-
-            初次识别结果：
-            ${initialResult.toString()}
-
-            === 复核必须先做的视觉检查 ===
-            A. 画面里是否能看到外壳、螯钳、八条腿、虾尾、虾头、鱼鳍、鱼眼、贝壳？
-               - 如果能看到，主体一定是水产/海鲜（蟹、虾、鱼、贝），绝不允许写成"红烧肉""卤肉""扣肉""里脊"等纯肉类菜名。
-            B. 大闸蟹的典型特征：青壳白肚、个头偏小、常用绳绑住、清蒸为主，整只摆盘。看到这些特征必须命名为"大闸蟹"或"清蒸大闸蟹"。
-            C. 红烧肉的必要条件：方块/片状猪肉、酱油色油亮酱汁、不含任何外壳/螯/腿。颜色红亮但有外壳的菜，不是红烧肉。
-
-            复核规则：
-            1. 先确认 scene_type 是否正确：single_dish、combo_meal、mixed_bowl、packaged_food、drink_only 只能选一个。
-            2. 如果初次结果把"带壳水产"误判成了"红烧肉/卤肉/肉块"等，必须改正为对应的蟹/虾/鱼/贝类菜名。
-            3. 如果图片里能看到多盘主食和饮料，要把每一项都返回。
-            4. 重新检查每个独立容器：杯、碗、盘、纸盒、篮子、锅，不能漏掉明显存在的那一份。
-            5. 如果是一整碗混合菜、重酱汁拌匀、很多食材混在一起，则优先归为 mixed_bowl，并识别成整道菜，不要强行拆成配料。
-            6. 带吸管或杯盖的饮品必须单独返回一个 item，例如奶茶、果茶、杯装饮料、咖啡。
-            7. 韩式辣拌面、火鸡面、方便面式干拌面不要误判成意面。
-            8. 热狗、香肠、玉米热狗不要误判成烤鱼。
-            9. 如果不能百分百确认品牌或口味，优先返回合理泛称，例如"奶茶""火鸡面""韩式拌面""杯装饮料""热狗""辣炒米粉""清蒸蟹""清蒸鱼"。
-            10. 删除任何与图片明显不相干的食物。
-            11. 只返回最终 JSON，不要解释。
-
-            返回格式仍然是：
-            {
-              "scene_type": "single_dish",
-              "foods": [
-                {
-                  "name": "食物名称",
-                  "kcal": 180,
-                  "icon": "🍱",
-                  "carbs": 25,
-                  "protein": 4,
-                  "fat": 7
-                }
-              ]
-            }
-        """.trimIndent()
-    }
-
-    private fun buildFoodCoveragePrompt(currentFoods: List<PendingFoodItem>): String {
-        return """
-            你正在做最后一次漏项检查，请只关注“有没有漏掉独立的一份食物或饮料”。
-
-            当前结果：
-            ${currentFoods.joinToString(prefix = "[", postfix = "]") { it.name }}
-
-            检查规则：
-            1. 按独立容器逐个检查：杯、碗、盘、纸盒、篮子、锅都算一个独立容器。
-            2. 每个独立容器至少对应一个 item；如果同一个容器里有两种明显不同的小吃，也可以拆成两项。
-            3. 带杯盖或吸管的饮品绝不能漏掉。
-            4. 长条面包/香肠/玉米粒/酱料组合优先识别为热狗、芝士热狗、玉米热狗，不要写成烤鱼。
-            5. 面条配酱汁、芝士片、煎蛋时优先识别为拌面、火鸡面、炒面、芝士拌面，不要写成意面。
-            6. 炸鸡块、鸡翅、鸡柳、芝士炸鸡要按炸鸡类返回，不要写成无关菜名。
-            7. 只返回最终 JSON，不要解释。
-
-            返回格式：
-            {
-              "foods": [
-                {
-                  "name": "食物名称",
-                  "kcal": 180,
-                  "icon": "🍱",
-                  "carbs": 25,
-                  "protein": 4,
-                  "fat": 7
-                }
-              ]
-            }
-        """.trimIndent()
-    }
-
-    private fun buildDrinkOnlyPrompt(currentFoods: List<PendingFoodItem>): String {
-        return """
-            你现在只做一件事：检查图片里是否还有漏掉的饮料。
-
-            当前已经识别到的食物：
-            ${currentFoods.joinToString(prefix = "[", postfix = "]") { it.name }}
-
-            规则：
-            1. 只关注饮料，不要重复返回已经识别出的主食、小吃、酱料。
-            2. 如果图片里能明显看到杯子、杯盖、吸管、透明杯、纸杯、瓶装饮品，请返回一个饮料 item。
-            3. 如果无法确认具体口味，可以返回“饮料”“果茶”“奶茶”“柠檬茶”“汽水”等更稳妥名称。
-            4. 如果图片里没有清晰可见的饮料，返回 {"foods": []}。
-            5. 严格只返回 JSON。
-
-            返回格式：
-            {
-              "foods": [
-                {
-                  "name": "饮料",
-                  "kcal": 120,
-                  "icon": "🥤",
-                  "carbs": 30,
-                  "protein": 0,
-                  "fat": 0
-                }
-              ]
-            }
-        """.trimIndent()
-    }
+    private fun buildDrinkOnlyPrompt(currentFoods: List<PendingFoodItem>): String =
+        FoodRecognitionPromptBuilder.drinkOnlyPrompt(currentFoods.map { it.name })
 
     private fun extractSceneType(result: JSONObject): String {
         val rawType = result.optString("scene_type")

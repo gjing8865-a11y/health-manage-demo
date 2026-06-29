@@ -42,6 +42,8 @@ Food-recognition and weather HTTP calls also sit behind remote data sources. The
 ViewModel is still too large for long-term maintenance, but data access is no
 longer wired directly to DAOs, provider behavior is testable, and pure domain
 calculations have started moving out of screen orchestration.
+Food-recognition prompt construction is also isolated from the ViewModel so the
+AI request contract can be reviewed and tested without running the app.
 
 ## Data And State
 
