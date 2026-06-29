@@ -106,11 +106,12 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
 - [x] Remove legacy storage permissions and restrict cleartext traffic to the STM32 device IP.
+- [x] Disable Android backup and device-transfer extraction for local health data.
 - [ ] Add historical Room migrations for pre-v9 local installs if upgrade support is required.
-- [ ] Harden release security: backup policy, API key handling, release signing, and privacy notes.
+- [ ] Harden release security: production API-key handling, release signing, and privacy notes.
 
 ## Privacy And Security Notes
 
-This app handles health-related data. API keys and local machine paths must stay in `local.properties`, which is ignored by Git. Build outputs and APKs are also ignored because generated artifacts can contain compiled constants.
+This app handles health-related data. API keys and local machine paths must stay in `local.properties`, which is ignored by Git. Build outputs and APKs are also ignored because generated artifacts can contain compiled constants. Android cloud backup and device-transfer extraction are disabled for local health data.
 
 Before publishing a public portfolio repository, rotate any API keys that were previously used in local builds.

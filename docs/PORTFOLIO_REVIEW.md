@@ -52,7 +52,6 @@ The repository now demonstrates more than a small UI demo:
 The project is intentionally still being improved. High-value next steps:
 
 - split `AppViewModel` into feature ViewModels
-- move weather and food-recognition calls into remote data sources
-- add explicit Room migrations and schema exports
+- add historical Room migrations if pre-v9 upgrade support is required
 - capture stable screenshots or a short demo GIF
-- add privacy notes for health-related local data
+- add production release signing and API-key handling notes

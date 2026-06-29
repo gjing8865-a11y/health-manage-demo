@@ -104,7 +104,7 @@ Recommended next cuts:
 
 - `AppViewModel` still owns too many responsibilities.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
-- Release builds still need stricter backup policy, release signing, and privacy notes.
+- Release builds still need production API-key handling, release signing, and privacy notes.
 - Some legacy comments contain encoding artifacts and should be cleaned.
 - README screenshots still need to be captured from a stable demo build.
 
