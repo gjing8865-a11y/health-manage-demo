@@ -96,8 +96,9 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Add architecture notes for portfolio review.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
+- [x] Remove legacy storage permissions and restrict cleartext traffic to the STM32 device IP.
 - [ ] Replace destructive Room migrations with explicit migrations.
-- [ ] Harden release security: permissions, cleartext traffic, API key handling, and privacy notes.
+- [ ] Harden release security: backup policy, API key handling, release signing, and privacy notes.
 
 ## Privacy And Security Notes
 
