@@ -103,7 +103,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `AppViewModel` still owns too many responsibilities.
-- Room currently uses destructive migrations and does not export schemas.
+- Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need stricter backup policy, release signing, and privacy notes.
 - Some legacy comments contain encoding artifacts and should be cleaned.
 - README screenshots still need to be captured from a stable demo build.

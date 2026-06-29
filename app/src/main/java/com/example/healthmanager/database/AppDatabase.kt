@@ -21,7 +21,7 @@ import com.example.healthmanager.model.WeeklyStepRecord
         ExerciseRecord::class
     ],
     version = 9,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -43,7 +43,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "health_manager_db"
                 )
-                    .fallbackToDestructiveMigration()
                     .build()
 
                 INSTANCE = instance
