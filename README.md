@@ -100,6 +100,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Add a repository layer in front of Room DAOs.
 - [x] Extract STM32 payload parsing and cover it with unit tests.
 - [x] Extract deterministic STM32 demo payload generation for hardware-free review.
+- [x] Move food-recognition HTTP calls into a remote data source with fallback tests.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
 - [x] Remove legacy storage permissions and restrict cleartext traffic to the STM32 device IP.

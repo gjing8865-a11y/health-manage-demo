@@ -18,6 +18,7 @@ import com.example.healthmanager.data.repository.NoteRepository
 import com.example.healthmanager.data.repository.SleepRepository
 import com.example.healthmanager.data.repository.UserRepository
 import com.example.healthmanager.data.repository.WeeklyStepRepository
+import com.example.healthmanager.data.remote.FoodRecognitionRemoteDataSource
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32DevicePayload
@@ -38,11 +39,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
-import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.InetSocketAddress
@@ -121,12 +119,6 @@ private data class SleepEstimate(
     val advice: String
 )
 
-private data class FoodModelConfig(
-    val model: String,
-    val enableThinking: Boolean,
-    val useRawBase64Image: Boolean
-)
-
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = AppDatabase.getDatabase(application)
@@ -137,6 +129,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val sleepRepository = SleepRepository(database.sleepDao())
     private val exerciseRepository = ExerciseRepository(database.exerciseDao())
     private val client = OkHttpClient()
+    private val foodRecognitionRemoteDataSource = FoodRecognitionRemoteDataSource(
+        client = client,
+        apiKey = BuildConfig.ZHIPU_API_KEY.orEmpty()
+    )
     private val deviceClient = client.newBuilder()
         .connectTimeout(1200, TimeUnit.MILLISECONDS)
         .readTimeout(1800, TimeUnit.MILLISECONDS)
@@ -1553,7 +1549,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private var lastAttemptBitmap: Bitmap? = null
-    private val zhipuApiKey = BuildConfig.ZHIPU_API_KEY.orEmpty()
 
     private var lastSavedFoodFingerprint: String? = null
     private var lastSavedFoodTimeMillis: Long = 0L
@@ -1606,7 +1601,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             _isAnalyzing.value = true
 
-            if (zhipuApiKey.isBlank()) {
+            if (!foodRecognitionRemoteDataSource.hasApiKey) {
                 Log.e("FOOD_AI", "ZHIPU_API_KEY 为空")
                 withContext(Dispatchers.Main) {
                     _showErrorDialog.value = true
@@ -1897,127 +1892,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         imageDataUrl: String,
         promptText: String
     ): JSONObject {
-        val candidates = listOf(
-            FoodModelConfig(
-                model = "glm-4v-flash",
-                enableThinking = false,
-                useRawBase64Image = false
-            ),
-            FoodModelConfig(
-                model = "glm-4v-plus",
-                enableThinking = false,
-                useRawBase64Image = false
-            )
+        return foodRecognitionRemoteDataSource.recognizeFoodJson(
+            imageBase64 = imageBase64,
+            imageDataUrl = imageDataUrl,
+            promptText = promptText
         )
-
-        var lastError: Exception? = null
-
-        for (candidate in candidates) {
-            try {
-                return requestFoodRecognitionJsonOnce(
-                    imagePayload = if (candidate.useRawBase64Image) imageBase64 else imageDataUrl,
-                    promptText = promptText,
-                    config = candidate
-                )
-            } catch (e: Exception) {
-                lastError = e
-                Log.w(
-                    "FOOD_AI",
-                    "识别模型 ${candidate.model} 失败(thinking=${candidate.enableThinking}, raw=${candidate.useRawBase64Image}): ${e.message}"
-                )
-            }
-        }
-
-        throw lastError ?: IllegalStateException("所有识别模型均调用失败")
-    }
-
-    private fun requestFoodRecognitionJsonOnce(
-        imagePayload: String,
-        promptText: String,
-        config: FoodModelConfig
-    ): JSONObject {
-        val jsonPayload = JSONObject().apply {
-            put("model", config.model)
-            put("temperature", 0.1)
-            put("messages", org.json.JSONArray().apply {
-                put(JSONObject().apply {
-                    put("role", "user")
-                    put("content", org.json.JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("type", "text")
-                            put("text", promptText)
-                        })
-                        put(JSONObject().apply {
-                            put("type", "image_url")
-                            put("image_url", JSONObject().apply {
-                                put("url", imagePayload)
-                            })
-                        })
-                    })
-                })
-            })
-        }.toString()
-
-        val request = Request.Builder()
-            .url("https://open.bigmodel.cn/api/paas/v4/chat/completions")
-            .addHeader("Authorization", "Bearer $zhipuApiKey")
-            .addHeader("Content-Type", "application/json")
-            .post(
-                RequestBody.create(
-                    "application/json".toMediaTypeOrNull(),
-                    jsonPayload
-                )
-            )
-            .build()
-
-        client.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-
-            if (!response.isSuccessful) {
-                throw IllegalStateException("接口请求失败: HTTP ${response.code} $body")
-            }
-
-            val root = JSONObject(body)
-            if (!root.has("choices")) {
-                throw IllegalStateException("返回结果中没有 choices 字段: $body")
-            }
-
-            val message = root
-                .getJSONArray("choices")
-                .getJSONObject(0)
-                .getJSONObject("message")
-
-            val contentValue = message.opt("content")
-            val content = when (contentValue) {
-                is String -> contentValue
-                is JSONArray -> buildString {
-                    for (i in 0 until contentValue.length()) {
-                        val item = contentValue.opt(i)
-                        when (item) {
-                            is JSONObject -> append(item.optString("text", item.toString()))
-                            null -> Unit
-                            else -> append(item.toString())
-                        }
-                    }
-                }
-                null -> ""
-                else -> contentValue.toString()
-            }
-
-            val cleaned = content
-                .replace("```json", "")
-                .replace("```", "")
-                .trim()
-
-            val jsonStart = cleaned.indexOf("{")
-            val jsonEnd = cleaned.lastIndexOf("}")
-
-            if (jsonStart == -1 || jsonEnd == -1 || jsonEnd <= jsonStart) {
-                throw IllegalStateException("模型返回中没有找到有效 JSON: $cleaned")
-            }
-
-            return JSONObject(cleaned.substring(jsonStart, jsonEnd + 1))
-        }
     }
 
     private fun parsePendingFoods(result: JSONObject): List<PendingFoodItem> {
