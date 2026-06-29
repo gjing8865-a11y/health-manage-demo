@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,7 +36,7 @@ fun NotesScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             modifier = Modifier.padding(bottom = 16.dp)
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Rounded.ArrowBack, contentDescription = "返回")
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "返回")
             }
             Text("便签管理", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
@@ -71,7 +73,7 @@ fun NotesScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
                 ) {
-                    Icon(Icons.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("同步到设备")
                 }

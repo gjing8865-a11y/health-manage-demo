@@ -18,11 +18,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.DirectionsRun
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.DirectionsRun
 import androidx.compose.material.icons.rounded.Fastfood
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Landscape
@@ -108,7 +108,7 @@ fun WeeklyReportSheet(viewModel: MainViewModel, onDismiss: () -> Unit) {
         isConnected -> "已连\n待同步"
         else -> "等待\n同步"
     }
-    val heroIcon = if (showRealData) Icons.Rounded.DirectionsRun else Icons.Rounded.Sync
+    val heroIcon = if (showRealData) Icons.AutoMirrored.Rounded.DirectionsRun else Icons.Rounded.Sync
     val heroTint = if (showRealData) PrimaryTeal.copy(alpha = 0.15f) else Color(0xFF94A3B8).copy(alpha = 0.18f)
 
     val avgStepsText = if (showRealData) "$avgSteps" else "--"
@@ -514,7 +514,7 @@ fun ExerciseSuggestionCard(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            if (hasExercise) Icons.Rounded.DirectionsRun else Icons.Rounded.Fastfood,
+                            if (hasExercise) Icons.AutoMirrored.Rounded.DirectionsRun else Icons.Rounded.Fastfood,
                             null,
                             Modifier.size(70.dp),
                             tint = if (hasExercise) PrimaryTeal.copy(alpha = 0.7f) else Color(0xFFFF7043).copy(alpha = 0.7f)

@@ -18,6 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -590,7 +592,7 @@ fun DeviceMainContent(
             DeviceFeatureItem(
                 title = "便签管理",
                 subtitle = "编辑并发送备忘录",
-                icon = Icons.Rounded.Notes,
+                icon = Icons.AutoMirrored.Rounded.Notes,
                 iconColor = Color(0xFFEAB308),
                 onClick = onNavigateToNotes
             )
@@ -626,7 +628,7 @@ fun DeviceMainContent(
                             .background(Color.Red.copy(0.08f), RoundedCornerShape(10.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Rounded.Logout, null, tint = Color.Red)
+                        Icon(Icons.AutoMirrored.Rounded.Logout, null, tint = Color.Red)
                     }
                     Spacer(Modifier.width(16.dp))
                     Column {

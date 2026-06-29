@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.DirectionsRun
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -170,7 +172,7 @@ fun DashboardScreen(
                         fontSize = 11.sp
                     )
                 }
-                Icon(Icons.Rounded.ArrowForward, null, tint = Color.White)
+                Icon(Icons.AutoMirrored.Rounded.ArrowForward, null, tint = Color.White)
             }
         }
 
@@ -194,7 +196,7 @@ fun DashboardScreen(
                     )
 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Rounded.DirectionsRun, null, tint = PrimaryTeal)
+                        Icon(Icons.AutoMirrored.Rounded.DirectionsRun, null, tint = PrimaryTeal)
                         Text(
                             "$steps",
                             fontSize = 36.sp,
