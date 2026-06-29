@@ -45,6 +45,8 @@ app/src/main/java/com/example/healthmanager
 
 The current code works, but `viewmodel.kt` is intentionally listed as a refactor target. The next architecture step is to split it into feature ViewModels, repositories, local/remote data sources, and use cases.
 
+For a fuller technical overview, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Getting Started
 
 1. Clone the repository.
@@ -91,6 +93,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] STM32 Wi-Fi/TCP device data integration.
 - [ ] GitHub repository polish: README, ignore rules, clean initial commit, screenshots.
 - [x] Fix unit-test task and add GitHub Actions CI.
+- [x] Add architecture notes for portfolio review.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
 - [ ] Replace destructive Room migrations with explicit migrations.
