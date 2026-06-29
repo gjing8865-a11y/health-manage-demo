@@ -68,48 +68,6 @@ import android.net.wifi.WifiNetworkSpecifier
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 
-data class PendingFoodItem(
-    val id: Long = System.nanoTime(),
-    val name: String,
-    val kcal: Int,
-    val icon: String,
-    val carbs: Int,
-    val protein: Int,
-    val fat: Int
-)
-
-data class DailyKcalStat(
-    val date: String,
-    val totalKcal: Int
-)
-
-data class WifiAccessPoint(
-    val ssid: String,
-    val bssid: String,
-    val level: Int,
-    val capabilities: String
-)
-
-data class WeatherUiState(
-    val city: String = "",
-    val weather: String = "",
-    val weatherIcon: String = "",
-    val temperature: Int = 0,
-    val tempMax: Int = 0,
-    val tempMin: Int = 0,
-    val aqi: Int = 0,
-    val aqiCategory: String = "",
-    val feelsLike: Double = 0.0,
-    val visibility: Double = 0.0,
-    val pressure: Double = 0.0,
-    val uv: Double = 0.0,
-    val humidity: Int = 0,
-    val windDirection: String = "",
-    val windPower: String = "",
-    val hourlyForecastJson: String = "[]",
-    val forecastJson: String = "[]"
-)
-
 private data class WeatherLocationCandidate(
     val displayCity: String,
     val queryCities: List<String>
@@ -137,18 +95,6 @@ private val provinceLevelWeatherNames = setOf(
     "河北", "山西", "辽宁", "吉林", "黑龙江", "江苏", "浙江", "安徽", "福建", "江西",
     "山东", "河南", "湖北", "湖南", "广东", "海南", "四川", "贵州", "云南", "陕西",
     "甘肃", "青海", "台湾", "内蒙古", "广西", "西藏", "宁夏", "新疆", "香港", "澳门"
-)
-
-data class SleepHardwareDetails(
-    val bedTime: String? = null,
-    val wakeTime: String? = null,
-    val deepSleepMinutes: Int? = null,
-    val wakeCount: Int? = null
-)
-
-data class SleepTrendPoint(
-    val label: String,
-    val score: Int
 )
 
 private data class HardwareSleepPayload(
