@@ -56,7 +56,7 @@ app/src/main/java/com/example/healthmanager
 `-- Manage/                         # Device-related helpers
 ```
 
-The current code works, but `viewmodel.kt` is intentionally listed as a refactor target. The next architecture step is to split it into feature ViewModels, repositories, local/remote data sources, and use cases.
+The current code works, but `viewmodel.kt` is intentionally listed as a refactor target. Repository, remote data source, and domain-calculation extractions are already in place; the next architecture step is to split the remaining screen orchestration into smaller feature ViewModels.
 
 For a fuller technical overview, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 For a quick interviewer path, see [docs/PORTFOLIO_REVIEW.md](docs/PORTFOLIO_REVIEW.md).
@@ -119,6 +119,8 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Move weather HTTP calls into a remote data source with request tests.
 - [x] Export Room schema and remove destructive migration fallback.
 - [x] Extract sleep-estimation domain logic and cover it with unit tests.
+- [x] Extract exercise summary calculation and cover it with unit tests.
+- [x] Extract food nutrition statistics and cover them with unit tests.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
 - [x] Remove legacy storage permissions and restrict cleartext traffic to the STM32 device IP.

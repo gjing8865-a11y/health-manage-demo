@@ -40,7 +40,8 @@ connectivity, and screen state. Local persistence now sits behind a thin
 repository layer, which makes the next ViewModel split safer and easier to test.
 Food-recognition and weather HTTP calls also sit behind remote data sources. The
 ViewModel is still too large for long-term maintenance, but data access is no
-longer wired directly to DAOs and provider behavior is testable.
+longer wired directly to DAOs, provider behavior is testable, and pure domain
+calculations have started moving out of screen orchestration.
 
 ## Data And State
 
@@ -56,6 +57,12 @@ Local persistence uses Room:
 Runtime UI state uses `StateFlow`. Reusable UI state models live in
 `viewmodel/UiStateModels.kt`, including pending food items, weather state,
 sleep trend points, and demo device payload presentation data.
+
+Pure domain logic now lives under `domain/`:
+
+- sleep estimation from heart rate, blood oxygen, and step samples
+- latest/weekly exercise summary calculation
+- food calorie and macronutrient statistics
 
 ## Device Flow
 
@@ -83,7 +90,7 @@ The next refactor should split orchestration by responsibility:
 ui/screens
   -> feature ViewModels
 domain
-  -> use cases, validation, and sleep-estimation logic
+  -> use cases, validation, and health-summary calculations
 data
   -> repositories
   -> Room data sources
@@ -103,11 +110,11 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `AppViewModel` still owns too many responsibilities.
-- Sleep-estimation logic now lives in the domain layer, but screen-level state still needs feature ViewModels.
+- Sleep, exercise, and food-summary calculations now live in the domain layer, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - Some legacy comments contain encoding artifacts and should be cleaned.
-- README screenshots still need to be captured from a stable demo build.
+- A short demo GIF or video would make the README even easier to scan.
 
 ## Verification
 

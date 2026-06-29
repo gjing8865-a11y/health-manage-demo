@@ -49,6 +49,8 @@ The repository now demonstrates more than a small UI demo:
 - Hardware-free demo mode with deterministic factory tests.
 - Food and weather API calls extracted into remote data sources with tests.
 - Sleep-estimation logic extracted into a domain component with tests.
+- Exercise summary and food nutrition statistics extracted into domain
+  calculators with tests.
 - GitHub Actions CI for debug build and unit tests.
 - Emulator screenshots documenting the dashboard, STM32 demo mode, and sleep
   analysis flow.

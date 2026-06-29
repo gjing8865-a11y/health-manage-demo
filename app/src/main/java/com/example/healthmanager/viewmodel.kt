@@ -24,6 +24,8 @@ import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32PayloadParser
+import com.example.healthmanager.domain.ExerciseSummaryCalculator
+import com.example.healthmanager.domain.FoodStatsCalculator
 import com.example.healthmanager.domain.SleepEstimate
 import com.example.healthmanager.domain.SleepEstimateCalculator
 import com.example.healthmanager.domain.SleepSignalSample
@@ -350,19 +352,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadLatestExerciseRecordForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val record = exerciseRepository.getLatestExerciseRecordByUser(account)
+            val summary = ExerciseSummaryCalculator.latest(record, "户外跑步")
 
             withContext(Dispatchers.Main) {
-                if (record == null) {
-                    _latestExerciseDistance.value = 0f
-                    _latestExerciseDuration.value = 0
-                    _latestExerciseCalories.value = 0
-                    _latestExerciseType.value = "户外跑步"
-                } else {
-                    _latestExerciseDistance.value = record.distanceKm
-                    _latestExerciseDuration.value = record.durationSeconds
-                    _latestExerciseCalories.value = record.calories
-                    _latestExerciseType.value = record.type
-                }
+                _latestExerciseDistance.value = summary.distanceKm
+                _latestExerciseDuration.value = summary.durationSeconds
+                _latestExerciseCalories.value = summary.calories
+                _latestExerciseType.value = summary.type
             }
         }
     }
@@ -376,14 +372,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 endTime = endOfWeek
             )
 
-            val totalDurationMinutes = records.sumOf { it.durationSeconds } / 60
-            val totalDistanceKm = records.sumOf { it.distanceKm.toDouble() }.toFloat()
-            val totalCount = records.size
+            val summary = ExerciseSummaryCalculator.weekly(records)
 
             withContext(Dispatchers.Main) {
-                _weeklyExerciseDurationMinutes.value = totalDurationMinutes
-                _weeklyExerciseDistanceKm.value = totalDistanceKm
-                _weeklyExerciseCount.value = totalCount
+                _weeklyExerciseDurationMinutes.value = summary.durationMinutes
+                _weeklyExerciseDistanceKm.value = summary.distanceKm
+                _weeklyExerciseCount.value = summary.count
             }
         }
     }
@@ -414,19 +408,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 endTime = endOfWeek
             )
 
-            val totalDurationMinutes = weeklyRecords.sumOf { it.durationSeconds } / 60
-            val totalDistanceKm = weeklyRecords.sumOf { it.distanceKm.toDouble() }.toFloat()
-            val totalCount = weeklyRecords.size
+            val latestSummary = ExerciseSummaryCalculator.latest(record, "户外跑步")
+            val weeklySummary = ExerciseSummaryCalculator.weekly(weeklyRecords)
 
             withContext(Dispatchers.Main) {
-                _latestExerciseType.value = type
-                _latestExerciseDistance.value = distanceKm
-                _latestExerciseDuration.value = durationSeconds
-                _latestExerciseCalories.value = calories
+                _latestExerciseType.value = latestSummary.type
+                _latestExerciseDistance.value = latestSummary.distanceKm
+                _latestExerciseDuration.value = latestSummary.durationSeconds
+                _latestExerciseCalories.value = latestSummary.calories
 
-                _weeklyExerciseDurationMinutes.value = totalDurationMinutes
-                _weeklyExerciseDistanceKm.value = totalDistanceKm
-                _weeklyExerciseCount.value = totalCount
+                _weeklyExerciseDurationMinutes.value = weeklySummary.durationMinutes
+                _weeklyExerciseDistanceKm.value = weeklySummary.distanceKm
+                _weeklyExerciseCount.value = weeklySummary.count
             }
         }
     }
@@ -1558,34 +1551,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refreshFoodStats(records: List<FoodRecord>) {
         val today = SimpleDateFormat("M月d日", Locale.CHINA).format(Date())
+        val summary = FoodStatsCalculator.build(records, today)
 
-        val todayFoods = records.filter { it.date == today }
+        _foodList.value = summary.records
+        _totalKcal.value = summary.totalKcal
+        _todayTotalKcal.value = summary.todayTotalKcal
+        _todayCarbs.value = summary.todayCarbs
+        _todayProtein.value = summary.todayProtein
+        _todayFat.value = summary.todayFat
 
-        _foodList.value = records
-        _totalKcal.value = records.sumOf { it.kcal }
-        _todayTotalKcal.value = todayFoods.sumOf { it.kcal }
-        _todayCarbs.value = todayFoods.sumOf { it.carbs }
-        _todayProtein.value = todayFoods.sumOf { it.protein }
-        _todayFat.value = todayFoods.sumOf { it.fat }
-
-        _dailyKcalStats.value = records
-            .groupBy { it.date }
-            .map { (date, foods) ->
+        _dailyKcalStats.value = summary.dailyKcalStats
+            .map { stat ->
                 DailyKcalStat(
-                    date = date,
-                    totalKcal = foods.sumOf { it.kcal }
+                    date = stat.date,
+                    totalKcal = stat.totalKcal
                 )
             }
-            .sortedBy { parseMonthDayToSortableKey(it.date) }
-            .takeLast(7)
-    }
-
-    private fun parseMonthDayToSortableKey(date: String): Int {
-        val regex = Regex("""(\d+)月(\d+)日""")
-        val match = regex.find(date) ?: return 0
-        val month = match.groupValues[1].toIntOrNull() ?: 0
-        val day = match.groupValues[2].toIntOrNull() ?: 0
-        return month * 100 + day
     }
 
     fun analyzeFoodImage(bitmap: Bitmap) {
