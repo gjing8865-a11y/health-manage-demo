@@ -3,10 +3,13 @@ package com.example.healthmanager.viewmodel
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
+import android.location.Address
+import android.location.Geocoder
 import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.os.VibratorManager
 import android.util.Base64
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -51,6 +54,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -65,6 +69,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
 import com.example.healthmanager.model.NoteRecord
 import com.example.healthmanager.model.FoodRecord
 import com.example.healthmanager.model.WeeklyStepRecord
@@ -590,10 +595,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ?.mapNotNull { route -> route.gateway?.hostAddress }
             .orEmpty()
 
-        val dhcpGateway = runCatching {
-            val gateway = wifiManager.dhcpInfo?.gateway ?: 0
-            gateway.takeIf { it != 0 }?.let(Stm32EndpointResolver::formatIpv4Address)
-        }.getOrNull()
+        val dhcpGateway = readDhcpGatewayHost()
 
         return Stm32EndpointResolver.buildDataUrls(
             rawManualEndpoint = _stm32DataEndpoint.value,
@@ -1016,15 +1018,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return true
         }
 
-        val ssid = normalizeWifiSsid(wifiManager.connectionInfo?.ssid)
+        val ssid = readCurrentWifiSsid()
         if (!isLikelyStm32HotspotName(ssid)) {
             return false
         }
 
-        val wifiNetwork = connectivityManager.allNetworks.firstOrNull { network ->
-            connectivityManager.getNetworkCapabilities(network)
-                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-        }
+        val wifiNetwork = findActiveWifiNetwork()
 
         if (wifiNetwork != null) {
             currentNetwork = wifiNetwork
@@ -1052,6 +1051,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ssid.contains("SmartBand", ignoreCase = true) ||
                 ssid.contains("AI-THINKER", ignoreCase = true) ||
                 ssid.contains("ESP", ignoreCase = true)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun readDhcpGatewayHost(): String? {
+        val gateway = wifiManager.dhcpInfo?.gateway ?: 0
+        return gateway.takeIf { it != 0 }?.let(Stm32EndpointResolver::formatIpv4Address)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun readCurrentWifiSsid(): String {
+        return normalizeWifiSsid(wifiManager.connectionInfo?.ssid)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun findActiveWifiNetwork(): Network? {
+        return connectivityManager.allNetworks.firstOrNull { network ->
+            connectivityManager.getNetworkCapabilities(network)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        }
     }
 
     fun hasRequiredWifiPermissions(context: Context): Boolean {
@@ -1085,17 +1103,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun buildWifiAccessPoints(results: List<ScanResult>): List<WifiAccessPoint> {
         return results
-            .filter { it.SSID.isNotBlank() && it.SSID != "<unknown ssid>" }
-            .map {
+            .mapNotNull { scanResult ->
+                val ssid = readScanResultSsid(scanResult)
+                    .takeIf { it.isNotBlank() && it != "<unknown ssid>" }
+                    ?: return@mapNotNull null
                 WifiAccessPoint(
-                    ssid = it.SSID,
-                    bssid = it.BSSID ?: "",
-                    level = it.level,
-                    capabilities = it.capabilities ?: ""
+                    ssid = ssid,
+                    bssid = scanResult.BSSID ?: "",
+                    level = scanResult.level,
+                    capabilities = scanResult.capabilities ?: ""
                 )
             }
             .distinctBy { it.ssid }
             .sortedByDescending { it.level }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun readScanResultSsid(scanResult: ScanResult): String {
+        return scanResult.SSID
     }
 
     private fun updateWifiScanSummary(
@@ -1180,7 +1205,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
 
-        val started = wifiManager.startScan()
+        val started = requestWifiScan()
         if (!started) {
             _isScanningWifi.value = false
             runCatching {
@@ -1391,13 +1416,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    @Suppress("DEPRECATION")
+    private fun requestWifiScan(): Boolean {
+        return wifiManager.startScan()
+    }
+
     private fun triggerVibration(context: Context) {
-        val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 500, 200, 500), -1))
+            val effect = VibrationEffect.createWaveform(longArrayOf(0, 500, 200, 500), -1)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(VibratorManager::class.java)
+                    ?.defaultVibrator
+                    ?.vibrate(effect)
+            } else {
+                legacyVibrator(context)?.vibrate(effect)
+            }
         } else {
-            vibrator.vibrate(1000)
+            @Suppress("DEPRECATION")
+            legacyVibrator(context)?.vibrate(1000)
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun legacyVibrator(context: Context): Vibrator? {
+        return context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
     fun dismissHeartRateAlert() {
@@ -2278,10 +2320,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun resolveWeatherLocation(context: Context, latitude: Double, longitude: Double): WeatherLocationCandidate? {
+    private suspend fun resolveWeatherLocation(context: Context, latitude: Double, longitude: Double): WeatherLocationCandidate? {
         return try {
-            val geocoder = android.location.Geocoder(context, Locale.CHINA)
-            val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+            val geocoder = Geocoder(context, Locale.CHINA)
+            val addresses = geocoder.awaitFromLocation(latitude, longitude, 1)
             val address = addresses?.firstOrNull()
 
             WeatherLocationResolver.buildCandidate(
@@ -2293,6 +2335,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e("LOCATION_ERROR", "地理反编码失败: ${e.message}", e)
             null
+        }
+    }
+
+    private suspend fun Geocoder.awaitFromLocation(
+        latitude: Double,
+        longitude: Double,
+        maxResults: Int
+    ): List<Address>? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            suspendCancellableCoroutine { continuation ->
+                getFromLocation(latitude, longitude, maxResults, object : Geocoder.GeocodeListener {
+                    override fun onGeocode(addresses: MutableList<Address>) {
+                        if (continuation.isActive) {
+                            continuation.resume(addresses)
+                        }
+                    }
+
+                    override fun onError(errorMessage: String?) {
+                        if (continuation.isActive) {
+                            continuation.resume(emptyList())
+                        }
+                    }
+                })
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            getFromLocation(latitude, longitude, maxResults)
         }
     }
 
