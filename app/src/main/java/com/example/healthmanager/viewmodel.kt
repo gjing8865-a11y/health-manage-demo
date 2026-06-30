@@ -18,6 +18,8 @@ import com.example.healthmanager.data.repository.UserRepository
 import com.example.healthmanager.data.repository.WeeklyStepRepository
 import com.example.healthmanager.data.remote.FoodRecognitionPromptBuilder
 import com.example.healthmanager.data.remote.FoodRecognitionRemoteDataSource
+import com.example.healthmanager.data.remote.FoodRecognitionResultMapper
+import com.example.healthmanager.data.remote.RecognizedFoodItem
 import com.example.healthmanager.data.remote.WeatherRemoteDataSource
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
@@ -1185,11 +1187,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     imageDataUrl = imageDataUrl,
                     promptText = buildFoodRecognitionPrompt()
                 )
-                val initialSceneType = extractSceneType(initialResult)
-                val initialFoods = sanitizeRecognizedFoods(parsePendingFoods(initialResult))
-                if (shouldAcceptInitialRecognition(initialFoods, initialSceneType)) {
+                val initialSceneType = FoodRecognitionResultMapper.extractSceneType(initialResult)
+                val initialFoods = FoodRecognitionResultMapper.sanitize(
+                    FoodRecognitionResultMapper.parseItems(initialResult)
+                )
+                if (FoodRecognitionResultMapper.shouldAcceptInitialRecognition(initialFoods, initialSceneType)) {
                     withContext(Dispatchers.Main) {
-                        _pendingFoods.value = initialFoods
+                        _pendingFoods.value = initialFoods.toPendingFoodItems()
                         _showRecognitionConfirmDialog.value = true
                     }
                     return@launch
@@ -1205,13 +1209,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Log.w("FOOD_AI", "复核识别失败，回退初次结果: ${error.message}")
                     initialResult
                 }
-                val reviewedSceneType = extractSceneType(reviewedResult).ifBlank { initialSceneType }
+                val reviewedSceneType = FoodRecognitionResultMapper.extractSceneType(reviewedResult).ifBlank { initialSceneType }
 
-                val reviewedFoods = sanitizeRecognizedFoods(parsePendingFoods(reviewedResult))
-                val sanitizedFoods = if (needsFoodCoverageReview(reviewedFoods, reviewedSceneType)) {
+                val reviewedFoods = FoodRecognitionResultMapper.sanitize(
+                    FoodRecognitionResultMapper.parseItems(reviewedResult)
+                )
+                val sanitizedFoods = if (FoodRecognitionResultMapper.needsCoverageReview(reviewedFoods, reviewedSceneType)) {
                     val coverageFoods = runCatching {
-                        sanitizeRecognizedFoods(
-                            parsePendingFoods(
+                        FoodRecognitionResultMapper.sanitize(
+                            FoodRecognitionResultMapper.parseItems(
                                 requestFoodRecognitionJson(
                                     imageBase64 = base64,
                                     imageDataUrl = imageDataUrl,
@@ -1224,7 +1230,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         emptyList()
                     }
 
-                    if (shouldPreferCandidateFoods(reviewedFoods, coverageFoods)) {
+                    if (FoodRecognitionResultMapper.shouldPreferCandidateFoods(reviewedFoods, coverageFoods)) {
                         coverageFoods
                     } else {
                         reviewedFoods
@@ -1232,7 +1238,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     reviewedFoods
                 }
-                val completedFoods = if (shouldRunDrinkCheck(sanitizedFoods, reviewedSceneType)) {
+                val completedFoods = if (FoodRecognitionResultMapper.shouldRunDrinkCheck(sanitizedFoods, reviewedSceneType)) {
                     mergeMissingDrinkFoods(
                         baseFoods = sanitizedFoods,
                         imageBase64 = base64,
@@ -1247,7 +1253,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 withContext(Dispatchers.Main) {
-                    _pendingFoods.value = completedFoods
+                    _pendingFoods.value = completedFoods.toPendingFoodItems()
                     _showRecognitionConfirmDialog.value = true
                 }
             } catch (e: Exception) {
@@ -1267,27 +1273,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun buildFoodReviewPrompt(initialResult: JSONObject): String =
         FoodRecognitionPromptBuilder.reviewPrompt(initialResult)
 
-    private fun buildFoodCoveragePrompt(currentFoods: List<PendingFoodItem>): String =
+    private fun buildFoodCoveragePrompt(currentFoods: List<RecognizedFoodItem>): String =
         FoodRecognitionPromptBuilder.coveragePrompt(currentFoods.map { it.name })
 
-    private fun buildDrinkOnlyPrompt(currentFoods: List<PendingFoodItem>): String =
+    private fun buildDrinkOnlyPrompt(currentFoods: List<RecognizedFoodItem>): String =
         FoodRecognitionPromptBuilder.drinkOnlyPrompt(currentFoods.map { it.name })
-
-    private fun extractSceneType(result: JSONObject): String {
-        val rawType = result.optString("scene_type")
-            .ifBlank { result.optString("sceneType") }
-            .trim()
-            .lowercase(Locale.getDefault())
-
-        return when {
-            rawType.contains("combo") -> "combo_meal"
-            rawType.contains("mixed") || rawType.contains("bowl") -> "mixed_bowl"
-            rawType.contains("package") -> "packaged_food"
-            rawType.contains("drink") -> "drink_only"
-            rawType.contains("single") -> "single_dish"
-            else -> ""
-        }
-    }
 
     private fun requestFoodRecognitionJson(
         imageBase64: String,
@@ -1301,58 +1291,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    private fun parsePendingFoods(result: JSONObject): List<PendingFoodItem> {
-        val foodsToSave = mutableListOf<PendingFoodItem>()
-        val foodsArray = result.optJSONArray("foods")
-
-        if (foodsArray != null && foodsArray.length() > 0) {
-            for (i in 0 until foodsArray.length()) {
-                val item = foodsArray.getJSONObject(i)
-                foodsToSave.add(
-                    PendingFoodItem(
-                        name = item.optString("name", "未知食物"),
-                        kcal = parseIntValue(item.opt("kcal")),
-                        icon = item.optString("icon", "🍽️"),
-                        carbs = parseIntValue(item.opt("carbs")),
-                        protein = parseIntValue(item.opt("protein")),
-                        fat = parseIntValue(item.opt("fat"))
-                    )
-                )
-            }
-        } else {
-            val name = result.optString("name", "")
-            if (name.isNotBlank()) {
-                foodsToSave.add(
-                    PendingFoodItem(
-                        name = name,
-                        kcal = parseIntValue(result.opt("kcal")),
-                        icon = result.optString("icon", "🍽️"),
-                        carbs = parseIntValue(result.opt("carbs")),
-                        protein = parseIntValue(result.opt("protein")),
-                        fat = parseIntValue(result.opt("fat"))
-                    )
-                )
-            }
-        }
-
-        return foodsToSave
-    }
-
     private fun mergeMissingDrinkFoods(
-        baseFoods: List<PendingFoodItem>,
+        baseFoods: List<RecognizedFoodItem>,
         imageBase64: String,
         imageDataUrl: String
-    ): List<PendingFoodItem> {
+    ): List<RecognizedFoodItem> {
         val drinkFoods = runCatching {
-            sanitizeRecognizedFoods(
-                parsePendingFoods(
+            FoodRecognitionResultMapper.sanitize(
+                FoodRecognitionResultMapper.parseItems(
                     requestFoodRecognitionJson(
                         imageBase64 = imageBase64,
                         imageDataUrl = imageDataUrl,
                         promptText = buildDrinkOnlyPrompt(baseFoods)
                     )
                 )
-            ).filter { isDrinkFoodName(it.name) }
+            ).filter { FoodRecognitionResultMapper.isDrinkFoodName(it.name) }
         }.getOrElse { error ->
             Log.w("FOOD_AI", "饮料补漏失败: ${error.message}")
             emptyList()
@@ -1363,6 +1316,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return (baseFoods + drinkFoods)
             .distinctBy { it.name.lowercase(Locale.getDefault()) }
             .take(6)
+    }
+
+    private fun List<RecognizedFoodItem>.toPendingFoodItems(): List<PendingFoodItem> {
+        return map { item ->
+            PendingFoodItem(
+                name = item.name,
+                kcal = item.kcal,
+                icon = item.icon,
+                carbs = item.carbs,
+                protein = item.protein,
+                fat = item.fat
+            )
+        }
     }
 
     private fun prepareFoodRecognitionBitmap(bitmap: Bitmap, maxEdge: Int = 1024): Bitmap {
@@ -1376,213 +1342,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val targetWidth = (width * scale).toInt().coerceAtLeast(1)
         val targetHeight = (height * scale).toInt().coerceAtLeast(1)
         return Bitmap.createScaledBitmap(bitmap, targetWidth, targetHeight, true)
-    }
-
-    private fun normalizeRecognizedFoodName(rawName: String): String {
-        val cleaned = rawName
-            .trim()
-            .replace(Regex("""^[\d一二三四五六七八九十]+[.、:：)\]]\s*"""), "")
-            .replace(Regex("""^(食物|菜品|项目)\s*\d+\s*[:：-]?\s*"""), "")
-            .replace(Regex("""^(一份|一盘|一碗|一杯|一盒)\s*"""), "")
-            .replace(Regex("""[，,。.;；:：]+$"""), "")
-            .replace(Regex("""\s+"""), " ")
-            .trim(' ', '"', '“', '”')
-
-        return when {
-            cleaned.contains("意面") &&
-                listOf("意大利", "肉酱", "番茄", "奶油", "培根", "海鲜", "焗").none { it in cleaned } ->
-                "韩式拌面"
-
-            cleaned.contains("烤鱼堡") || cleaned.contains("烤鱼热狗") -> "热狗"
-            cleaned == "烤鱼" -> "热狗"
-            cleaned.contains("奶茶饮料") || cleaned.contains("杯装奶茶") -> "奶茶"
-            cleaned.contains("蜂蜜芥末") -> "蜂蜜芥末酱"
-            cleaned.contains("柠檬") && cleaned.contains("茶") -> "柠檬茶"
-            cleaned.contains("杯装饮品") || cleaned.contains("杯装饮料") -> "饮料"
-            else -> cleaned
-        }
-    }
-
-    private fun normalizeFoodEmoji(name: String, rawIcon: String): String {
-        val cleanedIcon = rawIcon.trim()
-        val genericIcons = setOf("", "🍽", "🍽️", "🍴", "🍴🍽️")
-
-        if (cleanedIcon.isNotEmpty() && cleanedIcon !in genericIcons) {
-            return cleanedIcon
-        }
-
-        val lowerName = name.lowercase(Locale.getDefault())
-        return when {
-            listOf("寿司", "手卷", "紫菜包饭", "饭团", "卷").any { it in name } -> "🍣"
-            listOf("拉面", "面", "粉", "米线").any { it in name } -> "🍜"
-            listOf("咖啡", "拿铁", "美式").any { it in name } || "coffee" in lowerName -> "☕"
-            listOf("奶茶", "茶饮", "果汁", "饮料", "汽水", "可乐").any { it in name } -> "🥤"
-            listOf("蛋", "煎蛋", "荷包蛋").any { it in name } -> "🍳"
-            listOf("蛋糕", "面包", "华夫", "甜甜圈", "糕点").any { it in name } -> "🍞"
-            listOf("汉堡", "薯条", "炸鸡", "披萨", "快餐").any { it in name } -> "🍔"
-            listOf("米饭", "盖饭", "拌饭", "丼", "饭").any { it in name } -> "🍚"
-            "蟹" in name -> "🦀"
-            "虾" in name -> "🦐"
-            "鱼" in name -> "🐟"
-            listOf("扇贝", "生蚝", "蛤蜊", "青口", "贝").any { it in name } -> "🦪"
-            else -> "🍽️"
-        }
-    }
-
-    private fun sanitizeRecognizedFoods(items: List<PendingFoodItem>): List<PendingFoodItem> {
-        val invalidNames = setOf("未知食物", "食物", "菜品", "项目", "食物名称", "待确认")
-
-        return items.mapNotNull { item ->
-            val normalizedName = normalizeRecognizedFoodName(item.name)
-            if (normalizedName.isBlank() || normalizedName in invalidNames) {
-                return@mapNotNull null
-            }
-
-            enrichPendingFoodEstimate(
-                PendingFoodItem(
-                name = normalizedName,
-                kcal = item.kcal.coerceAtLeast(0),
-                icon = normalizeFoodEmoji(normalizedName, item.icon),
-                carbs = item.carbs.coerceAtLeast(0),
-                protein = item.protein.coerceAtLeast(0),
-                fat = item.fat.coerceAtLeast(0)
-                )
-            )
-        }
-            .distinctBy { it.name.lowercase(Locale.getDefault()) }
-            .take(6)
-    }
-
-    private fun enrichPendingFoodEstimate(item: PendingFoodItem): PendingFoodItem {
-        val name = item.name
-
-        fun withFallback(
-            kcal: Int,
-            carbs: Int,
-            protein: Int,
-            fat: Int
-        ): PendingFoodItem {
-            return item.copy(
-                kcal = if (item.kcal > 0) item.kcal else kcal,
-                carbs = if (item.carbs > 0) item.carbs else carbs,
-                protein = if (item.protein > 0) item.protein else protein,
-                fat = if (item.fat > 0) item.fat else fat
-            )
-        }
-
-        return when {
-            "蜂蜜芥末酱" in name -> withFallback(kcal = 90, carbs = 8, protein = 1, fat = 6)
-            name.endsWith("酱") -> withFallback(kcal = 60, carbs = 5, protein = 0, fat = 4)
-            "奶茶" in name -> withFallback(kcal = 180, carbs = 30, protein = 2, fat = 5)
-            "果茶" in name || "柠檬茶" in name || "茶饮" in name -> withFallback(kcal = 120, carbs = 28, protein = 0, fat = 0)
-            "可乐" in name || "汽水" in name -> withFallback(kcal = 140, carbs = 35, protein = 0, fat = 0)
-            name == "饮料" -> withFallback(kcal = 110, carbs = 26, protein = 0, fat = 0)
-            "芝士热狗" in name -> withFallback(kcal = 320, carbs = 28, protein = 11, fat = 18)
-            "热狗" in name -> withFallback(kcal = 280, carbs = 25, protein = 10, fat = 15)
-            "拌面" in name || "火鸡面" in name || "韩式拌面" in name -> withFallback(kcal = 420, carbs = 60, protein = 10, fat = 16)
-            "大闸蟹" in name -> withFallback(kcal = 180, carbs = 4, protein = 22, fat = 7)
-            "梭子蟹" in name || "面包蟹" in name -> withFallback(kcal = 200, carbs = 5, protein = 24, fat = 8)
-            "蟹" in name -> withFallback(kcal = 190, carbs = 4, protein = 22, fat = 8)
-            "小龙虾" in name -> withFallback(kcal = 230, carbs = 6, protein = 25, fat = 10)
-            "白灼虾" in name -> withFallback(kcal = 130, carbs = 1, protein = 24, fat = 3)
-            "皮皮虾" in name -> withFallback(kcal = 150, carbs = 2, protein = 26, fat = 4)
-            "虾" in name -> withFallback(kcal = 170, carbs = 3, protein = 22, fat = 6)
-            "清蒸鱼" in name -> withFallback(kcal = 220, carbs = 1, protein = 28, fat = 10)
-            "红烧鱼" in name -> withFallback(kcal = 280, carbs = 6, protein = 26, fat = 14)
-            "酸菜鱼" in name -> withFallback(kcal = 320, carbs = 8, protein = 28, fat = 18)
-            "烤鱼" in name -> withFallback(kcal = 320, carbs = 5, protein = 30, fat = 18)
-            "扇贝" in name || "生蚝" in name || "蛤蜊" in name || "青口" in name ->
-                withFallback(kcal = 160, carbs = 6, protein = 18, fat = 6)
-            else -> item
-        }
-    }
-
-    private fun needsFoodCoverageReview(items: List<PendingFoodItem>, sceneType: String): Boolean {
-        if (items.isEmpty()) return true
-        if (sceneType == "mixed_bowl" || sceneType == "single_dish") return false
-
-        val hasDrink = items.any { isDrinkFoodName(it.name) }
-        val hasMainFood = items.any { !isDrinkFoodName(it.name) }
-
-        return items.size <= 2 || (hasMainFood && !hasDrink)
-    }
-
-    private fun shouldRunDrinkCheck(items: List<PendingFoodItem>, sceneType: String): Boolean {
-        if (items.any { isDrinkFoodName(it.name) }) return false
-        if (sceneType == "mixed_bowl" || sceneType == "single_dish") return false
-        return true
-    }
-
-    private fun shouldAcceptInitialRecognition(
-        items: List<PendingFoodItem>,
-        sceneType: String
-    ): Boolean {
-        if (items.isEmpty()) return false
-
-        val hasDrink = items.any { isDrinkFoodName(it.name) }
-        val hasSpecificFood = items.any { !isGenericFoodName(it.name) }
-
-        return when (sceneType) {
-            "single_dish", "mixed_bowl" -> items.size <= 2 && hasSpecificFood
-            "drink_only" -> hasDrink
-            "packaged_food" -> hasSpecificFood
-            "combo_meal" -> items.size >= 3 && hasDrink
-            else -> false
-        }
-    }
-
-    private fun isGenericFoodName(name: String): Boolean {
-        return name in setOf("饮料", "食物", "菜品", "主食", "小吃", "酱料")
-    }
-
-    private fun shouldPreferCandidateFoods(
-        current: List<PendingFoodItem>,
-        candidate: List<PendingFoodItem>
-    ): Boolean {
-        if (candidate.isEmpty()) return false
-
-        val currentHasDrink = current.any { isDrinkFoodName(it.name) }
-        val candidateHasDrink = candidate.any { isDrinkFoodName(it.name) }
-
-        return when {
-            candidateHasDrink && !currentHasDrink -> true
-            candidate.size >= current.size + 2 -> true
-            candidate.size > current.size && candidate.any { isFastFoodOrSnackName(it.name) } -> true
-            else -> false
-        }
-    }
-
-    private fun isDrinkFoodName(name: String): Boolean {
-        val lowerName = name.lowercase(Locale.getDefault())
-        return listOf("奶茶", "茶饮", "果茶", "果汁", "饮料", "汽水", "可乐", "咖啡", "柠檬茶")
-            .any { it in name } || listOf("tea", "coffee", "cola", "drink", "juice").any { it in lowerName }
-    }
-
-    private fun isFastFoodOrSnackName(name: String): Boolean {
-        return listOf(
-            "炸鸡", "鸡翅", "鸡柳", "鸡排", "热狗", "香肠", "玉米狗", "薯条",
-            "拌面", "火鸡面", "炒面", "芝士", "奶茶", "饮料"
-        ).any { it in name }
-    }
-
-    private fun parseIntValue(raw: Any?): Int {
-        return when (raw) {
-            is Int -> raw
-            is Long -> raw.toInt()
-            is Double -> raw.toInt()
-            is String -> {
-                val text = raw.trim()
-                val rangeRegex = Regex("""(\d+)\s*[-~到]\s*(\d+)""")
-                val rangeMatch = rangeRegex.find(text)
-                if (rangeMatch != null) {
-                    val start = rangeMatch.groupValues[1].toIntOrNull() ?: 0
-                    val end = rangeMatch.groupValues[2].toIntOrNull() ?: start
-                    return (start + end) / 2
-                }
-                Regex("""\d+""").find(text)?.value?.toIntOrNull() ?: 0
-            }
-            else -> 0
-        }
     }
 
     fun removePendingFood(id: Long) {

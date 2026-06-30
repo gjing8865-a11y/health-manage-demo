@@ -14,7 +14,7 @@ project quickly without owning the STM32 hardware.
    STM32 session, JSON stream extractor, parser, endpoint resolver, and demo
    data factory.
 6. `app/src/main/java/com/example/healthmanager/data/remote/` for API data
-   sources.
+   sources, food-recognition prompt construction, and result mapping.
 7. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
    logic.
 8. `app/src/main/java/com/example/healthmanager/platform/` for Android Wi-Fi,
@@ -57,6 +57,8 @@ The repository now demonstrates more than a small UI demo:
 - Hardware-free demo mode with deterministic factory tests.
 - Food and weather API calls extracted into remote data sources with tests.
 - Food-recognition prompt construction extracted from the ViewModel with tests.
+- Food-recognition result parsing, cleanup, fallback nutrition estimates, and
+  drink/coverage review rules extracted from the ViewModel with tests.
 - Weather location candidate resolution extracted into a domain component with tests.
 - Sleep-estimation logic extracted into a domain component with tests.
 - Shared sleep hardware detail model moved out of the ViewModel package.

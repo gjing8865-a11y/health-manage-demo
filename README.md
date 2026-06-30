@@ -49,7 +49,7 @@ app/src/main/java/com/example/healthmanager
 +-- MainActivity.kt                 # App entry and navigation
 +-- viewmodel.kt                    # Current app state and business orchestration
 +-- data/repository/                # Repository layer over local persistence
-+-- data/remote/                    # Food-recognition and weather API clients
++-- data/remote/                    # Food-recognition/weather API clients and result mappers
 +-- database/                       # Room database and DAO definitions
 +-- device/                         # STM32 session, payload, endpoint, Wi-Fi hotspot models
 +-- domain/                         # Pure health calculations and policies
@@ -124,6 +124,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract deterministic STM32 demo payload generation for hardware-free review.
 - [x] Move food-recognition HTTP calls into a remote data source with fallback tests.
 - [x] Extract food-recognition prompt building and cover it with unit tests.
+- [x] Extract food-recognition result mapping and fallback rules with tests.
 - [x] Move weather HTTP calls into a remote data source with request tests.
 - [x] Extract weather location resolution and cover it with unit tests.
 - [x] Export Room schema and remove destructive migration fallback.

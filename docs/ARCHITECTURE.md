@@ -46,6 +46,9 @@ compatibility is isolated behind platform adapters, and pure domain calculations
 have started moving out of screen orchestration.
 Food-recognition prompt construction is also isolated from the ViewModel so the
 AI request contract can be reviewed and tested without running the app.
+Food-recognition result mapping is isolated as well, including scene type
+normalization, candidate food parsing, drink checks, and nutrition fallback
+rules.
 The STM32 data channel is also isolated in `device/Stm32DeviceSession.kt`, so
 TCP/HTTP transport, writable socket access, and JSON stream framing no longer
 live directly in the ViewModel.
@@ -82,6 +85,14 @@ Pure domain logic now lives under `domain/`:
 - food calorie and macronutrient statistics
 - sustained high-heart-rate alert policy
 - weather location candidate resolution
+
+Remote API shaping lives under `data/remote/`:
+
+- `FoodRecognitionPromptBuilder` defines the multi-step recognition prompts.
+- `FoodRecognitionRemoteDataSource` owns the AI HTTP request and model fallback.
+- `FoodRecognitionResultMapper` parses and sanitizes model output, applies
+  drink/coverage review rules, and fills conservative nutrition estimates.
+- `WeatherRemoteDataSource` owns weather HTTP requests.
 
 STM32 device transport now lives under `device/`:
 
@@ -122,6 +133,7 @@ data
   -> repositories
   -> Room data sources
   -> remote API data sources
+  -> food-recognition result mappers
 device
   -> STM32 TCP/HTTP session
   -> STM32 payload parser
@@ -141,7 +153,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `MainViewModel` still owns too many responsibilities.
-- Sleep, exercise, food-summary, heart-rate alert, weather-location calculations, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
+- Sleep, exercise, food-summary, heart-rate alert, weather-location calculations, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - A short demo GIF or video would make the README even easier to scan.
