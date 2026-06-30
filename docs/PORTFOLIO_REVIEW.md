@@ -11,7 +11,8 @@ project quickly without owning the STM32 hardware.
 4. `docs/SECURITY_PRIVACY.md` for health-data, API-key, backup, and release
    security notes.
 5. `app/src/main/java/com/example/healthmanager/device/` for the extracted
-   STM32 parser and demo data factory.
+   STM32 session, JSON stream extractor, parser, endpoint resolver, and demo
+   data factory.
 6. `app/src/main/java/com/example/healthmanager/data/remote/` for API data
    sources.
 7. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
@@ -50,6 +51,8 @@ The repository now demonstrates more than a small UI demo:
 - Compose multi-screen Android app with local persistence.
 - Room-backed health records with a repository layer in front of DAOs.
 - Wi-Fi/TCP device integration with a testable STM32 payload parser.
+- STM32 TCP/HTTP session extracted from the ViewModel.
+- TCP JSON stream extraction covered by focused unit tests.
 - STM32 endpoint resolution extracted from the ViewModel and covered by tests.
 - Hardware-free demo mode with deterministic factory tests.
 - Food and weather API calls extracted into remote data sources with tests.

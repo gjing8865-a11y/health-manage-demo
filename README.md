@@ -51,7 +51,7 @@ app/src/main/java/com/example/healthmanager
 +-- data/repository/                # Repository layer over local persistence
 +-- data/remote/                    # Food-recognition and weather API clients
 +-- database/                       # Room database and DAO definitions
-+-- device/                         # STM32 payload, endpoint, Wi-Fi hotspot models
++-- device/                         # STM32 session, payload, endpoint, Wi-Fi hotspot models
 +-- domain/                         # Pure health calculations and policies
 +-- platform/                       # Android system API adapters
 +-- model/                          # Room entities
@@ -120,6 +120,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Add a repository layer in front of Room DAOs.
 - [x] Extract STM32 payload parsing and cover it with unit tests.
 - [x] Extract STM32 endpoint resolution and cover it with unit tests.
+- [x] Extract STM32 TCP/HTTP device session and JSON stream parsing.
 - [x] Extract deterministic STM32 demo payload generation for hardware-free review.
 - [x] Move food-recognition HTTP calls into a remote data source with fallback tests.
 - [x] Extract food-recognition prompt building and cover it with unit tests.

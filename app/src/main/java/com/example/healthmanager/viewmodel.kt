@@ -21,9 +21,9 @@ import com.example.healthmanager.data.remote.FoodRecognitionRemoteDataSource
 import com.example.healthmanager.data.remote.WeatherRemoteDataSource
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
+import com.example.healthmanager.device.Stm32DeviceSession
 import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32EndpointResolver
-import com.example.healthmanager.device.Stm32PayloadParser
 import com.example.healthmanager.device.Stm32WifiHotspotPolicy
 import com.example.healthmanager.device.WifiAccessPoint
 import com.example.healthmanager.domain.ExerciseSummaryCalculator
@@ -56,12 +56,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
-import java.net.InetSocketAddress
-import java.net.URI
-import java.net.Socket
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -84,10 +80,6 @@ import android.net.wifi.WifiNetworkSpecifier
 import androidx.annotation.RequiresApi
 
 private const val STM32_WIFI_CONNECT_TIMEOUT_MS = 30_000
-private const val STM32_TCP_CONNECT_TIMEOUT_MS = 2_500
-private const val STM32_TCP_READ_TIMEOUT_MS = 1200
-private const val STM32_TCP_FIRST_PACKET_TIMEOUT_MS = 20_000L
-private const val STM32_TCP_IDLE_RECONNECT_MS = 15_000L
 private const val SLEEP_SIGNAL_WINDOW_MS = 12 * 60 * 60 * 1000L
 private const val SLEEP_ESTIMATE_SAVE_INTERVAL_MS = 60_000L
 private const val SLEEP_ESTIMATE_MIN_SAMPLES = 3
@@ -118,6 +110,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .readTimeout(1800, TimeUnit.MILLISECONDS)
         .callTimeout(2500, TimeUnit.MILLISECONDS)
         .build()
+    private val stm32DeviceSession = Stm32DeviceSession(
+        httpClient = deviceClient,
+        socketFactoryProvider = { currentNetwork?.socketFactory }
+    )
 
     private val prefs =
         application.getSharedPreferences("health_manager_prefs", Context.MODE_PRIVATE)
@@ -539,7 +535,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 while (currentCoroutineContext().isActive && _isConnected.value) {
                     try {
-                        listenStm32DevicePayloads(dataUrls)
+                        stm32DeviceSession.listenPayloads(
+                            urls = dataUrls,
+                            isConnected = { _isConnected.value },
+                            onTcpWaiting = {
+                                withContext(Dispatchers.Main) {
+                                    _deviceDataText.value = "已连上 HRB_AP 数据端口，正在等待手环主动推送心率数据..."
+                                }
+                            },
+                            onPayload = { payload ->
+                                withContext(Dispatchers.Main) {
+                                    _isFetchingDeviceData.value = false
+                                    applyStm32DevicePayload(payload)
+                                }
+                            }
+                        )
                         return@launch
                     } catch (e: Exception) {
                         if (e is CancellationException) {
@@ -569,8 +579,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } finally {
                 if (stm32DataListenerToken == listenerToken) {
-                    runCatching { stm32DataSocket?.close() }
-                    stm32DataSocket = null
+                    stm32DeviceSession.close()
                     stm32DataListenerJob = null
                     withContext(Dispatchers.Main) {
                         _isFetchingDeviceData.value = false
@@ -588,255 +597,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             rawManualEndpoint = _stm32DataEndpoint.value,
             discoveredHosts = routeGateways + listOfNotNull(dhcpGateway)
         )
-    }
-
-    private fun readStm32DevicePayload(urls: List<String>): Stm32DevicePayload {
-        var lastError: Exception? = null
-        val attemptedUrls = mutableListOf<String>()
-
-        for (url in urls) {
-            attemptedUrls += url
-            try {
-                if (url.startsWith("tcp://")) {
-                    val uri = URI(url)
-                    val host = uri.host ?: throw IllegalStateException("TCP 地址缺少 host: $url")
-                    return readRawTcpStm32Payload(
-                        host = host,
-                        port = if (uri.port > 0) uri.port else Stm32EndpointResolver.DEFAULT_TCP_PORT
-                    )
-                } else {
-                    return readStm32DevicePayloadFromUrl(url)
-                }
-            } catch (e: Exception) {
-                lastError = e
-                Log.w("STM32_DATA", "读取 $url 失败: ${e.message}", e)
-            }
-        }
-
-        throw IllegalStateException(
-            "没有发现可返回 JSON 的设备接口，已尝试 ${attemptedUrls.take(12).joinToString()}",
-            lastError
-        )
-    }
-
-    private suspend fun listenStm32DevicePayloads(urls: List<String>) {
-        var lastError: Exception? = null
-        val attemptedUrls = mutableListOf<String>()
-
-        for (url in urls) {
-            attemptedUrls += url
-            try {
-                if (url.startsWith("tcp://")) {
-                    val uri = URI(url)
-                    val host = uri.host ?: throw IllegalStateException("TCP 地址缺少 host: $url")
-                    listenRawTcpStm32Payloads(
-                        host = host,
-                        port = if (uri.port > 0) uri.port else Stm32EndpointResolver.DEFAULT_TCP_PORT
-                    )
-                    return
-                } else {
-                    val payload = readStm32DevicePayloadFromUrl(url)
-                    withContext(Dispatchers.Main) {
-                        applyStm32DevicePayload(payload)
-                    }
-                    return
-                }
-            } catch (e: Exception) {
-                lastError = e
-                Log.w("STM32_DATA", "监听 $url 失败: ${e.message}", e)
-            }
-        }
-
-        throw IllegalStateException(
-            "没有发现可返回 JSON 的设备接口，已尝试 ${attemptedUrls.take(12).joinToString()}",
-            lastError
-        )
-    }
-
-    private fun readStm32DevicePayloadFromUrl(url: String): Stm32DevicePayload {
-        val request = Request.Builder()
-            .url(url)
-            .build()
-
-        val clientForNetwork = currentNetwork?.socketFactory?.let { socketFactory ->
-            deviceClient.newBuilder()
-                .socketFactory(socketFactory)
-                .build()
-        } ?: deviceClient
-
-        clientForNetwork.newCall(request).execute().use { response ->
-            val body = response.body?.string().orEmpty()
-
-            if (!response.isSuccessful) {
-                throw IllegalStateException("HTTP ${response.code}")
-            }
-
-            if (body.isBlank()) {
-                throw IllegalStateException("设备返回空数据")
-            }
-
-            val json = runCatching { JSONObject(body) }.getOrElse {
-                throw IllegalStateException("设备接口未返回 JSON，地址: $url")
-            }
-            return Stm32PayloadParser.parse(json)
-        }
-    }
-
-    private fun readRawTcpStm32Payload(host: String, port: Int): Stm32DevicePayload {
-        val rawSocket = (currentNetwork?.socketFactory?.createSocket() as? Socket) ?: Socket()
-
-        rawSocket.use { socket ->
-            socket.connect(InetSocketAddress(host, port), STM32_TCP_CONNECT_TIMEOUT_MS)
-            socket.soTimeout = STM32_TCP_READ_TIMEOUT_MS
-
-            val input = socket.getInputStream()
-            val deadline = System.currentTimeMillis() + STM32_TCP_FIRST_PACKET_TIMEOUT_MS
-            var lastHeartPacket: Stm32DevicePayload? = null
-
-            while (System.currentTimeMillis() < deadline) {
-                val rawText = try {
-                    readSocketText(input)
-                } catch (e: java.net.SocketTimeoutException) {
-                    continue
-                }
-
-                for (jsonText in extractJsonObjects(rawText)) {
-                    val payload = Stm32PayloadParser.parse(jsonText)
-                    val hasValidHeartData = payload.heartRate > 0 && payload.bloodOxygen > 0
-                    if (hasValidHeartData || !payload.isHeartPacket) {
-                        return payload
-                    }
-                    lastHeartPacket = payload
-                }
-            }
-
-            return lastHeartPacket ?: throw IllegalStateException("TCP $host:$port 未收到手环主动推送的 JSON 数据")
-        }
-    }
-
-    private suspend fun listenRawTcpStm32Payloads(host: String, port: Int) {
-        val rawSocket = (currentNetwork?.socketFactory?.createSocket() as? Socket) ?: Socket()
-
-        stm32DataSocket = rawSocket
-        rawSocket.use { socket ->
-            socket.connect(InetSocketAddress(host, port), STM32_TCP_CONNECT_TIMEOUT_MS)
-            socket.soTimeout = STM32_TCP_READ_TIMEOUT_MS
-
-            val input = socket.getInputStream()
-            var hasReceivedPacket = false
-            val firstPacketDeadline = System.currentTimeMillis() + STM32_TCP_FIRST_PACKET_TIMEOUT_MS
-            var lastPacketAt = System.currentTimeMillis()
-
-            withContext(Dispatchers.Main) {
-                _deviceDataText.value = "已连上 HRB_AP 数据端口，正在等待手环主动推送心率数据..."
-            }
-
-            while (currentCoroutineContext().isActive && _isConnected.value) {
-                val rawText = try {
-                    readSocketText(input)
-                } catch (e: java.net.SocketTimeoutException) {
-                    if (!hasReceivedPacket && System.currentTimeMillis() > firstPacketDeadline) {
-                        throw IllegalStateException("20 秒内没有收到手环推送的 JSON")
-                    }
-                    if (hasReceivedPacket && System.currentTimeMillis() - lastPacketAt > STM32_TCP_IDLE_RECONNECT_MS) {
-                        throw IllegalStateException("连续 15 秒没有收到新的心率推送")
-                    }
-                    continue
-                }
-
-                val jsonObjects = extractJsonObjects(rawText)
-                if (jsonObjects.isEmpty()) {
-                    continue
-                }
-
-                hasReceivedPacket = true
-                lastPacketAt = System.currentTimeMillis()
-                for (jsonText in jsonObjects) {
-                    val payload = Stm32PayloadParser.parse(jsonText)
-                    withContext(Dispatchers.Main) {
-                        _isFetchingDeviceData.value = false
-                        applyStm32DevicePayload(payload)
-                    }
-                }
-            }
-        }
-    }
-
-    private fun readSocketText(input: java.io.InputStream): String {
-        val buffer = ByteArray(1024)
-        val output = ByteArrayOutputStream()
-
-        while (true) {
-            val length = try {
-                input.read(buffer)
-            } catch (e: java.net.SocketTimeoutException) {
-                if (output.size() > 0) break else throw e
-            }
-
-            if (length <= 0) break
-
-            output.write(buffer, 0, length)
-            val text = output.toString(Charsets.UTF_8.name())
-            if (extractJsonObjects(text).isNotEmpty()) {
-                return text
-            }
-        }
-
-        if (output.size() <= 0) {
-            throw IllegalStateException("TCP 未返回数据")
-        }
-
-        return output.toString(Charsets.UTF_8.name())
-    }
-
-    private fun extractJsonObject(text: String): String? {
-        return extractJsonObjects(text).firstOrNull()
-    }
-
-    private fun extractJsonObjects(text: String): List<String> {
-        val objects = mutableListOf<String>()
-        var start = -1
-        var depth = 0
-        var inString = false
-        var escaping = false
-
-        text.forEachIndexed { index, char ->
-            if (escaping) {
-                escaping = false
-                return@forEachIndexed
-            }
-
-            if (char == '\\' && inString) {
-                escaping = true
-                return@forEachIndexed
-            }
-
-            if (char == '"') {
-                inString = !inString
-                return@forEachIndexed
-            }
-
-            if (inString) return@forEachIndexed
-
-            when (char) {
-                '{' -> {
-                    if (depth == 0) start = index
-                    depth++
-                }
-
-                '}' -> {
-                    if (depth > 0) {
-                        depth--
-                        if (depth == 0 && start >= 0) {
-                            objects += text.substring(start, index + 1)
-                            start = -1
-                        }
-                    }
-                }
-            }
-        }
-
-        return objects
     }
 
     private fun applyStm32DevicePayload(payload: Stm32DevicePayload) {
@@ -932,16 +692,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentNetworkCallback: NetworkCallback? = null
     private var pendingConnectionSsid: String? = null
     private var stm32DataListenerJob: Job? = null
-    private var stm32DataSocket: Socket? = null
     private var stm32DataListenerToken = 0
-    private val stm32SocketWriteLock = Any()
 
     private fun stopStm32DataListener() {
         stm32DataListenerToken++
         stm32DataListenerJob?.cancel()
         stm32DataListenerJob = null
-        runCatching { stm32DataSocket?.close() }
-        stm32DataSocket = null
+        stm32DeviceSession.close()
     }
 
     private val _isConnected = MutableStateFlow(false)
@@ -2375,33 +2132,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         account: String,
         sentAt: Long
     ) {
-        val socket = awaitWritableStm32Socket()
-        val noteJson = JSONObject().apply {
-            put("type", "note")
-            put("content", content)
-            put("account", account)
-            put("timestamp", sentAt)
-        }.toString() + "\r\n"
-
-        synchronized(stm32SocketWriteLock) {
-            if (socket.isClosed || !socket.isConnected) {
-                throw IllegalStateException("STM32 TCP 通道已断开")
-            }
-            val output = socket.getOutputStream()
-            output.write(noteJson.toByteArray(Charsets.UTF_8))
-            output.flush()
-        }
-    }
-
-    private suspend fun awaitWritableStm32Socket(): Socket {
-        repeat(20) {
-            val socket = stm32DataSocket
-            if (socket != null && socket.isConnected && !socket.isClosed) {
-                return socket
-            }
-            delay(100)
-        }
-        throw IllegalStateException("STM32 数据通道未建立，请先保持设备连接并等待 TCP 通道连上")
+        stm32DeviceSession.sendNoteJson(
+            content = content,
+            account = account,
+            sentAt = sentAt
+        )
     }
 // endregion
 
