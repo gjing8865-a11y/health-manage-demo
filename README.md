@@ -49,7 +49,11 @@ app/src/main/java/com/example/healthmanager
 +-- MainActivity.kt                 # App entry and navigation
 +-- viewmodel.kt                    # Current app state and business orchestration
 +-- data/repository/                # Repository layer over local persistence
++-- data/remote/                    # Food-recognition and weather API clients
 +-- database/                       # Room database and DAO definitions
++-- device/                         # STM32 payload, endpoint, Wi-Fi hotspot models
++-- domain/                         # Pure health calculations and policies
++-- platform/                       # Android system API adapters
 +-- model/                          # Room entities
 +-- ui/screens/                     # Compose feature screens
 +-- ui/theme/                       # Compose theme
@@ -126,6 +130,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract exercise summary calculation and cover it with unit tests.
 - [x] Extract food nutrition statistics and cover them with unit tests.
 - [x] Extract heart-rate alert policy and cover it with unit tests.
+- [x] Extract Android Wi-Fi, vibration, and geocoder API adapters from the ViewModel.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.
 - [x] Remove legacy storage permissions and restrict cleartext traffic to the STM32 device IP.

@@ -16,9 +16,11 @@ project quickly without owning the STM32 hardware.
    sources.
 7. `app/src/main/java/com/example/healthmanager/domain/` for extracted domain
    logic.
-8. `app/src/test/java/com/example/healthmanager/` for unit tests covering
+8. `app/src/main/java/com/example/healthmanager/platform/` for Android Wi-Fi,
+   vibration, and geocoder adapters kept out of the ViewModel.
+9. `app/src/test/java/com/example/healthmanager/` for unit tests covering
    device parsing, demo data, remote data sources, and sleep estimation.
-9. GitHub Actions for build and unit-test evidence on every push.
+10. GitHub Actions for build and unit-test evidence on every push.
 
 ## Reviewer Demo Path
 
@@ -58,6 +60,8 @@ The repository now demonstrates more than a small UI demo:
 - Exercise summary and food nutrition statistics extracted into domain
   calculators with tests.
 - Heart-rate alert timing extracted into a domain policy with tests.
+- Android Wi-Fi, vibration, and geocoder compatibility code isolated in a
+  platform adapter layer.
 - GitHub Actions CI for debug build and unit tests.
 - Emulator screenshots documenting the dashboard, STM32 demo mode, and sleep
   analysis flow.
@@ -72,7 +76,7 @@ The repository now demonstrates more than a small UI demo:
 
 The project is intentionally still being improved. High-value next steps:
 
-- split `AppViewModel` into feature ViewModels
+- split `MainViewModel` into feature ViewModels
 - add historical Room migrations if pre-v9 upgrade support is required
 - record a short demo GIF or video for the README
 - add production release signing and API-key handling notes

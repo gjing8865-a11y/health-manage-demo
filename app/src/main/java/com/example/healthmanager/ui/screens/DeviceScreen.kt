@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.healthmanager.device.WifiAccessPoint
 import com.example.healthmanager.ui.theme.*
 import com.example.healthmanager.viewmodel.MainViewModel
 import kotlin.math.roundToInt
@@ -258,7 +259,7 @@ fun DeviceMainContent(
                             CircularProgressIndicator(color = PrimaryTeal)
                         }
                     } else {
-                        val manualDeviceAp = com.example.healthmanager.viewmodel.WifiAccessPoint(
+                        val manualDeviceAp = WifiAccessPoint(
                             ssid = "HRB_AP",
                             bssid = "manual",
                             level = -45,
@@ -268,7 +269,7 @@ fun DeviceMainContent(
                             it.ssid.equals(manualDeviceAp.ssid, ignoreCase = true)
                         })
                         val sortedList = displayList.sortedWith(
-                            compareByDescending<com.example.healthmanager.viewmodel.WifiAccessPoint> {
+                            compareByDescending<WifiAccessPoint> {
                                 isLikelyDeviceHotspot(it.ssid)
                             }.thenByDescending { it.level }
                         )

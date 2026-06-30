@@ -24,12 +24,13 @@ The app is a Kotlin Android application using Jetpack Compose and Material 3.
 ```text
 MainActivity
   -> Compose navigation destinations
-  -> AppViewModel
+  -> MainViewModel
        -> repositories
        -> Room DAOs
        -> SharedPreferences
        -> remote data sources for weather and food recognition
-       -> WifiDeviceManager and TCP socket device channel
+       -> platform adapters for Wi-Fi, vibration, and geocoding
+       -> TCP socket device channel
        -> StateFlow UI state
   -> Feature screens render state and send user events
 ```
@@ -40,8 +41,9 @@ connectivity, and screen state. Local persistence now sits behind a thin
 repository layer, which makes the next ViewModel split safer and easier to test.
 Food-recognition and weather HTTP calls also sit behind remote data sources. The
 ViewModel is still too large for long-term maintenance, but data access is no
-longer wired directly to DAOs, provider behavior is testable, and pure domain
-calculations have started moving out of screen orchestration.
+longer wired directly to DAOs, provider behavior is testable, Android system API
+compatibility is isolated behind platform adapters, and pure domain calculations
+have started moving out of screen orchestration.
 Food-recognition prompt construction is also isolated from the ViewModel so the
 AI request contract can be reviewed and tested without running the app.
 
@@ -59,6 +61,15 @@ Local persistence uses Room:
 Runtime UI state uses `StateFlow`. Reusable UI state models live in
 `viewmodel/UiStateModels.kt`, including pending food items, weather state,
 sleep trend points, and demo device payload presentation data.
+
+Android-specific platform integration now lives under `platform/`:
+
+- `WifiPlatformGateway` wraps Wi-Fi permissions, scan results, process network
+  binding, DHCP gateway discovery, and network callbacks.
+- `HealthVibrationController` wraps heart-rate alert vibration across Android
+  API levels.
+- `AndroidWeatherLocationResolver` wraps `Geocoder` and delegates city
+  normalization to the domain resolver.
 
 Pure domain logic now lives under `domain/`:
 
@@ -105,21 +116,22 @@ device
   -> STM32 payload parser
   -> STM32 endpoint resolver
   -> deterministic demo payload factory
+platform
+  -> Android Wi-Fi, geocoder, and vibration adapters
 ```
 
 Recommended next cuts:
 
-1. Extract device connection state from `AppViewModel`.
+1. Extract device connection state from `MainViewModel`.
 2. Split screen-specific state into smaller ViewModels after repositories exist.
 3. Add focused unit tests around repositories and data mapping.
 
 ## Known Technical Debt
 
-- `AppViewModel` still owns too many responsibilities.
-- Sleep, exercise, food-summary, heart-rate alert, and weather-location calculations now live in the domain layer, but screen-level state still needs feature ViewModels.
+- `MainViewModel` still owns too many responsibilities.
+- Sleep, exercise, food-summary, heart-rate alert, weather-location calculations, and Android platform API wrappers have been extracted, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
-- Some legacy comments contain encoding artifacts and should be cleaned.
 - A short demo GIF or video would make the README even easier to scan.
 
 ## Verification

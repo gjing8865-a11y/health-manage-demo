@@ -15,13 +15,6 @@ data class DailyKcalStat(
     val totalKcal: Int
 )
 
-data class WifiAccessPoint(
-    val ssid: String,
-    val bssid: String,
-    val level: Int,
-    val capabilities: String
-)
-
 data class WeatherUiState(
     val city: String = "",
     val weather: String = "",

@@ -3,13 +3,8 @@ package com.example.healthmanager.viewmodel
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
-import android.location.Address
-import android.location.Geocoder
 import android.net.Uri
 import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.util.Base64
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -29,6 +24,8 @@ import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32EndpointResolver
 import com.example.healthmanager.device.Stm32PayloadParser
+import com.example.healthmanager.device.Stm32WifiHotspotPolicy
+import com.example.healthmanager.device.WifiAccessPoint
 import com.example.healthmanager.domain.ExerciseSummaryCalculator
 import com.example.healthmanager.domain.FoodStatsCalculator
 import com.example.healthmanager.domain.HeartRateAlertPolicy
@@ -40,6 +37,9 @@ import com.example.healthmanager.domain.SleepSignalSample
 import com.example.healthmanager.domain.WeatherLocationCandidate
 import com.example.healthmanager.domain.WeatherLocationResolver
 import com.example.healthmanager.model.User
+import com.example.healthmanager.platform.AndroidWeatherLocationResolver
+import com.example.healthmanager.platform.HealthVibrationController
+import com.example.healthmanager.platform.WifiPlatformGateway
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
@@ -54,7 +54,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -69,28 +68,20 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
-import kotlin.coroutines.resume
 import com.example.healthmanager.model.NoteRecord
 import com.example.healthmanager.model.FoodRecord
 import com.example.healthmanager.model.WeeklyStepRecord
 import com.example.healthmanager.model.SleepRecord
 import com.example.healthmanager.model.ExerciseRecord
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageManager
-import android.location.LocationManager
-import android.net.ConnectivityManager
+import android.net.ConnectivityManager.NetworkCallback
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.net.wifi.ScanResult
-import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import androidx.annotation.RequiresApi
-import androidx.core.content.ContextCompat
 
 private const val STM32_WIFI_CONNECT_TIMEOUT_MS = 30_000
 private const val STM32_TCP_CONNECT_TIMEOUT_MS = 2_500
@@ -119,6 +110,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         client = client,
         apiKey = BuildConfig.WEATHER_API_KEY.orEmpty()
     )
+    private val wifiPlatformGateway = WifiPlatformGateway(application.applicationContext)
+    private val vibrationController = HealthVibrationController(application.applicationContext)
+    private val weatherLocationResolver = AndroidWeatherLocationResolver(application.applicationContext)
     private val deviceClient = client.newBuilder()
         .connectTimeout(1200, TimeUnit.MILLISECONDS)
         .readTimeout(1800, TimeUnit.MILLISECONDS)
@@ -587,15 +581,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun buildStm32DataUrls(): List<String> {
-        val linkProperties = currentNetwork
-            ?.let { network -> connectivityManager.getLinkProperties(network) }
-
-        val routeGateways = linkProperties
-            ?.routes
-            ?.mapNotNull { route -> route.gateway?.hostAddress }
-            .orEmpty()
-
-        val dhcpGateway = readDhcpGatewayHost()
+        val routeGateways = wifiPlatformGateway.linkGatewayHosts(currentNetwork)
+        val dhcpGateway = wifiPlatformGateway.dhcpGatewayHost()
 
         return Stm32EndpointResolver.buildDataUrls(
             rawManualEndpoint = _stm32DataEndpoint.value,
@@ -941,14 +928,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 // endregion
 
     // region 3. 设备连接管理（Wi-Fi / STM32）
-    private val wifiManager =
-        application.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-
-    private val connectivityManager =
-        application.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
     private var currentNetwork: Network? = null
-    private var currentNetworkCallback: ConnectivityManager.NetworkCallback? = null
+    private var currentNetworkCallback: NetworkCallback? = null
     private var pendingConnectionSsid: String? = null
     private var stm32DataListenerJob: Job? = null
     private var stm32DataSocket: Socket? = null
@@ -997,9 +978,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun startDemoDeviceMode() {
         stopStm32DataListener()
         currentNetworkCallback?.let {
-            runCatching { connectivityManager.unregisterNetworkCallback(it) }
+            runCatching { wifiPlatformGateway.unregisterNetworkCallback(it) }
         }
-        runCatching { connectivityManager.bindProcessToNetwork(null) }
+        runCatching { wifiPlatformGateway.bindProcessToNetwork(null) }
 
         currentNetwork = null
         currentNetworkCallback = null
@@ -1018,109 +999,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return true
         }
 
-        val ssid = readCurrentWifiSsid()
-        if (!isLikelyStm32HotspotName(ssid)) {
+        val ssid = wifiPlatformGateway.currentSsid()
+        if (!Stm32WifiHotspotPolicy.isLikelyStm32HotspotName(ssid)) {
             return false
         }
 
-        val wifiNetwork = findActiveWifiNetwork()
+        val wifiNetwork = wifiPlatformGateway.activeWifiNetwork()
 
         if (wifiNetwork != null) {
             currentNetwork = wifiNetwork
-            runCatching { connectivityManager.bindProcessToNetwork(wifiNetwork) }
+            runCatching { wifiPlatformGateway.bindProcessToNetwork(wifiNetwork) }
         }
 
         pendingConnectionSsid = null
         _connectedSsid.value = ssid
         _isConnected.value = true
         return true
-    }
-
-    private fun normalizeWifiSsid(rawSsid: String?): String {
-        return rawSsid
-            .orEmpty()
-            .trim()
-            .trim('"')
-            .takeUnless { it.isBlank() || it == "<unknown ssid>" }
-            .orEmpty()
-    }
-
-    private fun isLikelyStm32HotspotName(ssid: String): Boolean {
-        return ssid.contains("HRB", ignoreCase = true) ||
-                ssid.contains("STM32", ignoreCase = true) ||
-                ssid.contains("SmartBand", ignoreCase = true) ||
-                ssid.contains("AI-THINKER", ignoreCase = true) ||
-                ssid.contains("ESP", ignoreCase = true)
-    }
-
-    @Suppress("DEPRECATION")
-    private fun readDhcpGatewayHost(): String? {
-        val gateway = wifiManager.dhcpInfo?.gateway ?: 0
-        return gateway.takeIf { it != 0 }?.let(Stm32EndpointResolver::formatIpv4Address)
-    }
-
-    @Suppress("DEPRECATION")
-    private fun readCurrentWifiSsid(): String {
-        return normalizeWifiSsid(wifiManager.connectionInfo?.ssid)
-    }
-
-    @Suppress("DEPRECATION")
-    private fun findActiveWifiNetwork(): Network? {
-        return connectivityManager.allNetworks.firstOrNull { network ->
-            connectivityManager.getNetworkCapabilities(network)
-                ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-        }
-    }
-
-    fun hasRequiredWifiPermissions(context: Context): Boolean {
-        val fineLocationGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        val nearbyWifiGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.NEARBY_WIFI_DEVICES
-            ) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
-
-        return fineLocationGranted && nearbyWifiGranted
-    }
-
-    private fun isLocationServiceEnabled(): Boolean {
-        val locationManager = getApplication<Application>()
-            .getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-            ?: return false
-
-        return runCatching {
-            locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                    locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
-        }.getOrDefault(false)
-    }
-
-    private fun buildWifiAccessPoints(results: List<ScanResult>): List<WifiAccessPoint> {
-        return results
-            .mapNotNull { scanResult ->
-                val ssid = readScanResultSsid(scanResult)
-                    .takeIf { it.isNotBlank() && it != "<unknown ssid>" }
-                    ?: return@mapNotNull null
-                WifiAccessPoint(
-                    ssid = ssid,
-                    bssid = scanResult.BSSID ?: "",
-                    level = scanResult.level,
-                    capabilities = scanResult.capabilities ?: ""
-                )
-            }
-            .distinctBy { it.ssid }
-            .sortedByDescending { it.level }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun readScanResultSsid(scanResult: ScanResult): String {
-        return scanResult.SSID
     }
 
     private fun updateWifiScanSummary(
@@ -1152,21 +1046,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     @SuppressLint("MissingPermission")
     fun scanWifiHotspotsWithFallback() {
-        if (!hasRequiredWifiPermissions(getApplication())) {
+        if (!wifiPlatformGateway.hasRequiredPermissions()) {
             _isScanningWifi.value = false
             _wifiList.value = emptyList()
             _deviceDataText.value = "请先授予定位和附近 Wi-Fi 权限，再扫描 STM32 热点。"
             return
         }
 
-        if (!wifiManager.isWifiEnabled) {
+        if (!wifiPlatformGateway.isWifiEnabled) {
             _isScanningWifi.value = false
             _wifiList.value = emptyList()
             _deviceDataText.value = "请先打开手机 Wi-Fi，再扫描 STM32 热点。"
             return
         }
 
-        if (!isLocationServiceEnabled()) {
+        if (!wifiPlatformGateway.isLocationServiceEnabled()) {
             _isScanningWifi.value = false
             _wifiList.value = emptyList()
             _deviceDataText.value = "请先打开系统定位服务，Android 扫描 Wi-Fi 热点需要定位开关开启。"
@@ -1176,7 +1070,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _isScanningWifi.value = true
         _wifiList.value = emptyList()
         _deviceDataText.value = "正在扫描附近热点，请确认 STM32 已开启 Wi-Fi 热点。"
-        val cachedAccessPoints = buildWifiAccessPoints(wifiManager.scanResults.orEmpty())
+        val cachedAccessPoints = wifiPlatformGateway.cachedAccessPoints()
         if (cachedAccessPoints.isNotEmpty()) {
             _wifiList.value = cachedAccessPoints
         }
@@ -1184,7 +1078,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 try {
-                    val accessPoints = buildWifiAccessPoints(wifiManager.scanResults.orEmpty())
+                    val accessPoints = wifiPlatformGateway.cachedAccessPoints()
                     updateWifiScanSummary(accessPoints)
                 } catch (e: Exception) {
                     Log.e("WIFI_SCAN", "扫描失败: ${e.message}", e)
@@ -1192,24 +1086,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } finally {
                     _isScanningWifi.value = false
                     runCatching {
-                        context?.unregisterReceiver(this)
+                        wifiPlatformGateway.unregisterScanReceiver(this)
                     }
                 }
             }
         }
 
-        ContextCompat.registerReceiver(
-            getApplication(),
-            receiver,
-            IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
+        wifiPlatformGateway.registerScanReceiver(receiver)
 
-        val started = requestWifiScan()
+        val started = wifiPlatformGateway.requestScan()
         if (!started) {
             _isScanningWifi.value = false
             runCatching {
-                getApplication<Application>().unregisterReceiver(receiver)
+                wifiPlatformGateway.unregisterScanReceiver(receiver)
             }
             if (cachedAccessPoints.isNotEmpty()) {
                 updateWifiScanSummary(cachedAccessPoints, fromCache = true)
@@ -1267,7 +1156,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             currentNetworkCallback?.let {
-                runCatching { connectivityManager.unregisterNetworkCallback(it) }
+                runCatching { wifiPlatformGateway.unregisterNetworkCallback(it) }
             }
             stopStm32DataListener()
             currentNetworkCallback = null
@@ -1289,12 +1178,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val networkTypeText = if (password.isBlank()) "开放热点" else "加密热点"
             _deviceDataText.value = "正在以${networkTypeText}方式连接 $normalizedSsid，请在系统 Wi-Fi 弹窗中选择连接。"
 
-            val callback = object : ConnectivityManager.NetworkCallback() {
+            val callback = object : NetworkCallback() {
                 override fun onAvailable(network: Network) {
                     super.onAvailable(network)
                     currentNetwork = network
                     pendingConnectionSsid = null
-                    connectivityManager.bindProcessToNetwork(network)
+                    wifiPlatformGateway.bindProcessToNetwork(network)
                     _isConnected.value = true
                     _connectedSsid.value = normalizedSsid
                     _deviceDataText.value = "已连接到 $normalizedSsid，正在读取设备数据..."
@@ -1324,7 +1213,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 override fun onLost(network: Network) {
                     super.onLost(network)
-                    connectivityManager.bindProcessToNetwork(null)
+                    wifiPlatformGateway.bindProcessToNetwork(null)
                     currentNetwork = null
                     pendingConnectionSsid = null
                     stopStm32DataListener()
@@ -1342,7 +1231,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             currentNetworkCallback = callback
-            connectivityManager.requestNetwork(request, callback, STM32_WIFI_CONNECT_TIMEOUT_MS)
+            wifiPlatformGateway.requestNetwork(request, callback, STM32_WIFI_CONNECT_TIMEOUT_MS)
         } catch (e: Exception) {
             Log.e("WIFI_CONNECT", "连接 STM32 热点失败: ${e.message}", e)
             pendingConnectionSsid = null
@@ -1356,9 +1245,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         try {
             stopStm32DataListener()
             currentNetworkCallback?.let {
-                runCatching { connectivityManager.unregisterNetworkCallback(it) }
+                runCatching { wifiPlatformGateway.unregisterNetworkCallback(it) }
             }
-            connectivityManager.bindProcessToNetwork(null)
+            wifiPlatformGateway.bindProcessToNetwork(null)
         } catch (e: Exception) {
             Log.e("WIFI_DISCONNECT", "断开连接失败: ${e.message}", e)
         }
@@ -1401,7 +1290,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _showHeartRateAlert = MutableStateFlow(false)
     val showHeartRateAlert = _showHeartRateAlert.asStateFlow()
 
-    fun onHeartRateReceived(rate: Int, context: Context) {
+    fun onHeartRateReceived(rate: Int) {
         _heartRate.value = rate
         val decision = HeartRateAlertPolicy.onSample(
             rateBpm = rate,
@@ -1412,34 +1301,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _showHeartRateAlert.value = decision.state.visible
 
         if (decision.shouldVibrate) {
-            triggerVibration(context)
+            vibrationController.vibrateHeartRateAlert()
         }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun requestWifiScan(): Boolean {
-        return wifiManager.startScan()
-    }
-
-    private fun triggerVibration(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val effect = VibrationEffect.createWaveform(longArrayOf(0, 500, 200, 500), -1)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                context.getSystemService(VibratorManager::class.java)
-                    ?.defaultVibrator
-                    ?.vibrate(effect)
-            } else {
-                legacyVibrator(context)?.vibrate(effect)
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            legacyVibrator(context)?.vibrate(1000)
-        }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun legacyVibrator(context: Context): Vibrator? {
-        return context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
     fun dismissHeartRateAlert() {
@@ -2274,7 +2137,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             fusedLocationClient.lastLocation
                 .addOnSuccessListener { lastLocation ->
                     if (lastLocation != null) {
-                        handleResolvedWeatherLocation(context, lastLocation.latitude, lastLocation.longitude)
+                        handleResolvedWeatherLocation(lastLocation.latitude, lastLocation.longitude)
                     } else {
                         val tokenSource = CancellationTokenSource()
                         fusedLocationClient.getCurrentLocation(
@@ -2283,7 +2146,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         ).addOnSuccessListener { currentLocation ->
                             if (currentLocation != null) {
                                 handleResolvedWeatherLocation(
-                                    context,
                                     currentLocation.latitude,
                                     currentLocation.longitude
                                 )
@@ -2306,9 +2168,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun handleResolvedWeatherLocation(context: Context, latitude: Double, longitude: Double) {
+    private fun handleResolvedWeatherLocation(latitude: Double, longitude: Double) {
         viewModelScope.launch(Dispatchers.IO) {
-            val weatherLocation = resolveWeatherLocation(context, latitude, longitude)
+            val weatherLocation = try {
+                weatherLocationResolver.resolve(latitude, longitude)
+            } catch (e: Exception) {
+                Log.e("LOCATION_ERROR", "地理反编码失败: ${e.message}", e)
+                null
+            }
             withContext(Dispatchers.Main) {
                 if (weatherLocation == null) {
                     markWeatherUnavailable("定位失败，请点右上角重试")
@@ -2317,51 +2184,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     fetchRealWeather(weatherLocation)
                 }
             }
-        }
-    }
-
-    private suspend fun resolveWeatherLocation(context: Context, latitude: Double, longitude: Double): WeatherLocationCandidate? {
-        return try {
-            val geocoder = Geocoder(context, Locale.CHINA)
-            val addresses = geocoder.awaitFromLocation(latitude, longitude, 1)
-            val address = addresses?.firstOrNull()
-
-            WeatherLocationResolver.buildCandidate(
-                locality = address?.locality,
-                subAdminArea = address?.subAdminArea,
-                adminArea = address?.adminArea,
-                subLocality = address?.subLocality
-            )
-        } catch (e: Exception) {
-            Log.e("LOCATION_ERROR", "地理反编码失败: ${e.message}", e)
-            null
-        }
-    }
-
-    private suspend fun Geocoder.awaitFromLocation(
-        latitude: Double,
-        longitude: Double,
-        maxResults: Int
-    ): List<Address>? {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            suspendCancellableCoroutine { continuation ->
-                getFromLocation(latitude, longitude, maxResults, object : Geocoder.GeocodeListener {
-                    override fun onGeocode(addresses: MutableList<Address>) {
-                        if (continuation.isActive) {
-                            continuation.resume(addresses)
-                        }
-                    }
-
-                    override fun onError(errorMessage: String?) {
-                        if (continuation.isActive) {
-                            continuation.resume(emptyList())
-                        }
-                    }
-                })
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            getFromLocation(latitude, longitude, maxResults)
         }
     }
 
