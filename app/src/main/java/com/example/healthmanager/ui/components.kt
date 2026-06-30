@@ -1,7 +1,10 @@
 package com.example.healthmanager.ui.components
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -14,7 +17,6 @@ import androidx.compose.ui.unit.dp
 import com.example.healthmanager.ui.theme.BgLight
 import com.example.healthmanager.ui.theme.SurfaceWhite
 
-// 通用卡片容器
 @Composable
 fun HealthCard(
     modifier: Modifier = Modifier,
@@ -31,16 +33,14 @@ fun HealthCard(
     }
 }
 
-// 圆形进度条（Canvas 绘制）
 @Composable
 fun CircularStepProgress(
     modifier: Modifier = Modifier,
-    progress: Float, // 0.0 - 1.0
+    progress: Float,
     color: Color,
     strokeWidth: Dp = 12.dp
 ) {
     Canvas(modifier = modifier) {
-        // 背景圆环
         drawArc(
             color = BgLight,
             startAngle = -90f,
@@ -48,7 +48,6 @@ fun CircularStepProgress(
             useCenter = false,
             style = Stroke(width = strokeWidth.toPx())
         )
-        // 进度圆环
         drawArc(
             color = color,
             startAngle = -90f,

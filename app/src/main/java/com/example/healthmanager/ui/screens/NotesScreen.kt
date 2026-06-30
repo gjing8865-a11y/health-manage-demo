@@ -50,7 +50,7 @@ fun NotesScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { viewModel.updateNoteText(it) },
-                    placeholder = { Text("输入要发送到设备的文字...", color = TextSecondary) },
+                    placeholder = { Text("输入要同步到设备的文字...", color = TextSecondary) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
