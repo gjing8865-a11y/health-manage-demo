@@ -21,6 +21,8 @@ import com.example.healthmanager.data.remote.FoodRecognitionRemoteDataSource
 import com.example.healthmanager.data.remote.FoodRecognitionResultMapper
 import com.example.healthmanager.data.remote.RecognizedFoodItem
 import com.example.healthmanager.data.remote.WeatherRemoteDataSource
+import com.example.healthmanager.data.remote.WeatherStateMapper
+import com.example.healthmanager.data.remote.WeatherUiState
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32DeviceSession
@@ -37,7 +39,6 @@ import com.example.healthmanager.domain.SleepEstimateCalculator
 import com.example.healthmanager.domain.SleepHardwareDetails
 import com.example.healthmanager.domain.SleepSignalSample
 import com.example.healthmanager.domain.WeatherLocationCandidate
-import com.example.healthmanager.domain.WeatherLocationResolver
 import com.example.healthmanager.model.User
 import com.example.healthmanager.platform.AndroidWeatherLocationResolver
 import com.example.healthmanager.platform.HealthVibrationController
@@ -1727,7 +1728,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 for (queryCity in location.queryCities) {
                     try {
                         val json = weatherRemoteDataSource.fetchWeatherJson(queryCity)
-                        resolvedState = parseWeatherState(
+                        resolvedState = WeatherStateMapper.parse(
                             json = json,
                             displayCity = location.displayCity,
                             queryCity = queryCity
@@ -1758,64 +1759,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _isWeatherSyncing.value = false
             }
         }
-    }
-
-    private fun parseWeatherState(
-        json: JSONObject,
-        displayCity: String,
-        queryCity: String
-    ): WeatherUiState? {
-        val weather = json.optString("weather", "").trim()
-            .takeIf { it.isNotBlank() && it !in setOf("未知天气", "未知", "--") }
-            ?: return null
-
-        if (!json.has("temperature")) return null
-
-        val temperature = json.optInt("temperature", 0)
-        val tempMax = json.optInt("temp_max", temperature)
-        val tempMin = json.optInt("temp_min", temperature)
-        val aqi = json.optInt("aqi", 0)
-        val aqiCategory = json.optString("aqi_category", "未知").trim().ifBlank { "未知" }
-        val humidity = json.optInt("humidity", 0)
-        val windDirection = json.optString("wind_direction", "").trim()
-        val windPower = json.optString("wind_power", "").trim()
-        val responseCity = WeatherLocationResolver.normalizeCityName(json.optString("city", queryCity))
-
-        if (responseCity != null && WeatherLocationResolver.isProvinceLevelName(responseCity)) return null
-
-        val looksLikeEmptyPayload = temperature == 0 &&
-            tempMax == 0 &&
-            tempMin == 0 &&
-            aqi == 0 &&
-            humidity == 0 &&
-            aqiCategory in setOf("未知", "--") &&
-            windDirection.isBlank() &&
-            windPower.isBlank()
-
-        if (looksLikeEmptyPayload) return null
-
-        val forecastArray = json.optJSONArray("forecast")
-        val hourlyArray = json.optJSONArray("hourly_forecast")
-
-        return WeatherUiState(
-            city = displayCity,
-            weather = weather,
-            weatherIcon = json.optString("weather_icon", ""),
-            temperature = temperature,
-            tempMax = tempMax,
-            tempMin = tempMin,
-            aqi = aqi,
-            aqiCategory = aqiCategory,
-            feelsLike = json.optDouble("feels_like", temperature.toDouble()),
-            visibility = json.optDouble("visibility", 0.0),
-            pressure = json.optDouble("pressure", 0.0),
-            uv = json.optDouble("uv", 0.0),
-            humidity = humidity,
-            windDirection = windDirection,
-            windPower = windPower,
-            hourlyForecastJson = hourlyArray?.toString() ?: "[]",
-            forecastJson = forecastArray?.toString() ?: "[]"
-        )
     }
 
     fun updateSedentaryReminder(enabled: Boolean, interval: Int) {

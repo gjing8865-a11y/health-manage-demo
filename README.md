@@ -126,6 +126,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract food-recognition prompt building and cover it with unit tests.
 - [x] Extract food-recognition result mapping and fallback rules with tests.
 - [x] Move weather HTTP calls into a remote data source with request tests.
+- [x] Extract weather response mapping and invalid-payload guards with tests.
 - [x] Extract weather location resolution and cover it with unit tests.
 - [x] Export Room schema and remove destructive migration fallback.
 - [x] Extract sleep-estimation domain logic and cover it with unit tests.

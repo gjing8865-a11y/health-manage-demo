@@ -48,7 +48,8 @@ Food-recognition prompt construction is also isolated from the ViewModel so the
 AI request contract can be reviewed and tested without running the app.
 Food-recognition result mapping is isolated as well, including scene type
 normalization, candidate food parsing, drink checks, and nutrition fallback
-rules.
+rules. Weather response mapping is also isolated so empty, province-level, or
+placeholder API payloads are filtered outside screen orchestration.
 The STM32 data channel is also isolated in `device/Stm32DeviceSession.kt`, so
 TCP/HTTP transport, writable socket access, and JSON stream framing no longer
 live directly in the ViewModel.
@@ -64,9 +65,10 @@ Local persistence uses Room:
 - `SleepDao` for sleep records
 - `ExerciseDao` for exercise history
 
-Runtime UI state uses `StateFlow`. Reusable UI state models live in
-`viewmodel/UiStateModels.kt`, including pending food items, weather state,
-sleep trend points, and demo device payload presentation data.
+Runtime UI state uses `StateFlow`. Reusable ViewModel presentation models live
+in `viewmodel/UiStateModels.kt`, including pending food items and sleep trend
+points. Remote API-shaped UI payloads, such as weather state, live beside their
+response mappers under `data/remote/`.
 
 Android-specific platform integration now lives under `platform/`:
 
@@ -93,6 +95,8 @@ Remote API shaping lives under `data/remote/`:
 - `FoodRecognitionResultMapper` parses and sanitizes model output, applies
   drink/coverage review rules, and fills conservative nutrition estimates.
 - `WeatherRemoteDataSource` owns weather HTTP requests.
+- `WeatherStateMapper` parses weather payloads, applies invalid-payload guards,
+  and creates weather UI state for the screen.
 
 STM32 device transport now lives under `device/`:
 
@@ -133,7 +137,7 @@ data
   -> repositories
   -> Room data sources
   -> remote API data sources
-  -> food-recognition result mappers
+  -> remote response mappers
 device
   -> STM32 TCP/HTTP session
   -> STM32 payload parser
@@ -153,7 +157,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `MainViewModel` still owns too many responsibilities.
-- Sleep, exercise, food-summary, heart-rate alert, weather-location calculations, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
+- Sleep, exercise, food-summary, heart-rate alert, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - A short demo GIF or video would make the README even easier to scan.
