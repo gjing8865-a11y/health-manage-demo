@@ -133,6 +133,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract sleep-estimation domain logic and cover it with unit tests.
 - [x] Extract sleep presentation mapping and cover it with unit tests.
 - [x] Extract exercise summary calculation and cover it with unit tests.
+- [x] Extract weekly date-range calculation and cover it with unit tests.
 - [x] Extract food nutrition statistics and cover them with unit tests.
 - [x] Extract heart-rate alert policy and cover it with unit tests.
 - [x] Extract Android Wi-Fi, vibration, and geocoder API adapters from the ViewModel.

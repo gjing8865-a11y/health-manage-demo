@@ -69,6 +69,8 @@ The repository now demonstrates more than a small UI demo:
 - Shared sleep hardware detail model moved out of the ViewModel package.
 - Exercise summary and food nutrition statistics extracted into domain
   calculators with tests.
+- Weekly report/exercise date ranges extracted into a Monday-started domain
+  calculator with tests.
 - Heart-rate alert timing extracted into a domain policy with tests.
 - Android Wi-Fi, vibration, and geocoder compatibility code isolated in a
   platform adapter layer.

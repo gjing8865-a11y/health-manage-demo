@@ -41,6 +41,7 @@ import com.example.healthmanager.domain.SleepPresentationMapper
 import com.example.healthmanager.domain.SleepSignalSample
 import com.example.healthmanager.domain.SleepTrendPoint
 import com.example.healthmanager.domain.WeatherLocationCandidate
+import com.example.healthmanager.domain.WeeklyDateRangeCalculator
 import com.example.healthmanager.model.User
 import com.example.healthmanager.platform.AndroidWeatherLocationResolver
 import com.example.healthmanager.platform.HealthVibrationController
@@ -64,7 +65,6 @@ import okhttp3.OkHttpClient
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CancellationException
@@ -352,11 +352,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadWeeklyExerciseStatsForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val (startOfWeek, endOfWeek) = getCurrentWeekTimeRange()
+            val weekTimeRange = WeeklyDateRangeCalculator.currentWeekTimeRange()
             val records = exerciseRepository.getExerciseRecordsByUserInRange(
                 account = account,
-                startTime = startOfWeek,
-                endTime = endOfWeek
+                startTime = weekTimeRange.startMillis,
+                endTime = weekTimeRange.endMillis
             )
 
             val summary = ExerciseSummaryCalculator.weekly(records)
@@ -388,11 +388,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             exerciseRepository.insertExerciseRecord(record)
 
-            val (startOfWeek, endOfWeek) = getCurrentWeekTimeRange()
+            val weekTimeRange = WeeklyDateRangeCalculator.currentWeekTimeRange()
             val weeklyRecords = exerciseRepository.getExerciseRecordsByUserInRange(
                 account = account,
-                startTime = startOfWeek,
-                endTime = endOfWeek
+                startTime = weekTimeRange.startMillis,
+                endTime = weekTimeRange.endMillis
             )
 
             val latestSummary = ExerciseSummaryCalculator.latest(record, "户外跑步")
@@ -1815,37 +1815,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 // endregion
 
     init {
-        calculateCurrentWeekRange()
-    }
-
-    private fun calculateCurrentWeekRange() {
-        val calendar = Calendar.getInstance(Locale.CHINESE)
-        calendar.firstDayOfWeek = Calendar.MONDAY
-        val dateFormat = SimpleDateFormat("M月d日", Locale.CHINESE)
-        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        val start = dateFormat.format(calendar.time)
-        calendar.add(Calendar.DAY_OF_YEAR, 6)
-        _weeklyRange.value = "$start - ${dateFormat.format(calendar.time)}"
-    }
-
-    private fun getCurrentWeekTimeRange(): Pair<Long, Long> {
-        val calendar = Calendar.getInstance(Locale.CHINESE)
-        calendar.firstDayOfWeek = Calendar.MONDAY
-
-        calendar.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-        calendar.set(Calendar.HOUR_OF_DAY, 0)
-        calendar.set(Calendar.MINUTE, 0)
-        calendar.set(Calendar.SECOND, 0)
-        calendar.set(Calendar.MILLISECOND, 0)
-        val startOfWeek = calendar.timeInMillis
-
-        calendar.add(Calendar.DAY_OF_YEAR, 6)
-        calendar.set(Calendar.HOUR_OF_DAY, 23)
-        calendar.set(Calendar.MINUTE, 59)
-        calendar.set(Calendar.SECOND, 59)
-        calendar.set(Calendar.MILLISECOND, 999)
-        val endOfWeek = calendar.timeInMillis
-
-        return startOfWeek to endOfWeek
+        _weeklyRange.value = WeeklyDateRangeCalculator.displayRange()
     }
 }
