@@ -63,6 +63,8 @@ The repository now demonstrates more than a small UI demo:
   ViewModel with tests.
 - Weather location candidate resolution extracted into a domain component with tests.
 - Sleep-estimation logic extracted into a domain component with tests.
+- Sleep presentation mapping for trend labels, stage-point parsing, and score
+  advice extracted with tests.
 - Shared sleep hardware detail model moved out of the ViewModel package.
 - Exercise summary and food nutrition statistics extracted into domain
   calculators with tests.

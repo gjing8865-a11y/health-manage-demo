@@ -82,6 +82,8 @@ Android-specific platform integration now lives under `platform/`:
 Pure domain logic now lives under `domain/`:
 
 - sleep estimation from heart rate, blood oxygen, and step samples
+- sleep presentation mapping for trend labels, stage-point parsing, and score
+  advice
 - shared sleep hardware detail model used by device parsing and domain logic
 - latest/weekly exercise summary calculation
 - food calorie and macronutrient statistics
@@ -157,7 +159,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `MainViewModel` still owns too many responsibilities.
-- Sleep, exercise, food-summary, heart-rate alert, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
+- Sleep estimation, sleep presentation mapping, exercise, food-summary, heart-rate alert, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - A short demo GIF or video would make the README even easier to scan.

@@ -130,6 +130,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract weather location resolution and cover it with unit tests.
 - [x] Export Room schema and remove destructive migration fallback.
 - [x] Extract sleep-estimation domain logic and cover it with unit tests.
+- [x] Extract sleep presentation mapping and cover it with unit tests.
 - [x] Extract exercise summary calculation and cover it with unit tests.
 - [x] Extract food nutrition statistics and cover them with unit tests.
 - [x] Extract heart-rate alert policy and cover it with unit tests.

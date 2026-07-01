@@ -37,7 +37,9 @@ import com.example.healthmanager.domain.HeartRateAlertState
 import com.example.healthmanager.domain.SleepEstimate
 import com.example.healthmanager.domain.SleepEstimateCalculator
 import com.example.healthmanager.domain.SleepHardwareDetails
+import com.example.healthmanager.domain.SleepPresentationMapper
 import com.example.healthmanager.domain.SleepSignalSample
+import com.example.healthmanager.domain.SleepTrendPoint
 import com.example.healthmanager.domain.WeatherLocationCandidate
 import com.example.healthmanager.model.User
 import com.example.healthmanager.platform.AndroidWeatherLocationResolver
@@ -281,7 +283,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _sleepData.value = emptyList()
         _sleepDetails.value = SleepHardwareDetails()
         _sleepTrend.value = emptyList()
-        _sleepAdvice.value = "正在同步睡眠数据..."
+        _sleepAdvice.value = SleepPresentationMapper.EMPTY_SYNC_ADVICE
 
         _latestExerciseDistance.value = 0f
         _latestExerciseDuration.value = 0
@@ -1471,7 +1473,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 // endregion
 
     // region 6. 睡眠、天气与久坐提醒
-    private val _sleepAdvice = MutableStateFlow("正在同步睡眠数据...")
+    private val _sleepAdvice = MutableStateFlow(SleepPresentationMapper.EMPTY_SYNC_ADVICE)
     val sleepAdvice = _sleepAdvice.asStateFlow()
 
     private val _sleepScore = MutableStateFlow(0)
@@ -1507,21 +1509,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _weatherUiState = MutableStateFlow(WeatherUiState())
     val weatherUiState = _weatherUiState.asStateFlow()
 
-    private fun List<SleepRecord>.toSleepTrend(): List<SleepTrendPoint> {
-        return this
-            .sortedBy { it.updatedAt }
-            .map { record ->
-                SleepTrendPoint(
-                    label = record.date.takeLast(5).replace("-", "/"),
-                    score = record.score
-                )
-            }
-    }
-
     private fun loadSleepRecordForCurrentUser(account: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val record = sleepRepository.getLatestSleepRecordByUser(account)
-            val trend = sleepRepository.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
+            val trend = SleepPresentationMapper.toTrend(
+                sleepRepository.getRecentSleepRecordsByUser(account, 7)
+            )
 
             withContext(Dispatchers.Main) {
                 _sleepTrend.value = trend
@@ -1529,22 +1522,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _sleepScore.value = 0
                     _sleepData.value = emptyList()
                     _sleepDetails.value = SleepHardwareDetails()
-                    _sleepAdvice.value = "正在同步睡眠数据..."
+                    _sleepAdvice.value = SleepPresentationMapper.EMPTY_SYNC_ADVICE
                 } else {
-                    val parsedData = if (record.dataPoints.isBlank()) {
-                        emptyList()
-                    } else {
-                        record.dataPoints.split(",").mapNotNull { it.toFloatOrNull() }
-                    }
-
                     _sleepScore.value = record.score
-                    _sleepData.value = parsedData
+                    _sleepData.value = SleepPresentationMapper.parseStagePoints(record.dataPoints)
                     _sleepDetails.value = SleepHardwareDetails()
-                    _sleepAdvice.value = when {
-                        record.score >= 90 -> "睡眠质量极佳，继续保持！"
-                        record.score >= 70 -> "睡得还不错，建议早点休息。"
-                        else -> "睡眠较浅，睡前试试放下手机。"
-                    }
+                    _sleepAdvice.value = SleepPresentationMapper.adviceForScore(record.score)
                 }
             }
         }
@@ -1572,7 +1555,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (sleepSignalSamples.size < SLEEP_ESTIMATE_MIN_SAMPLES) {
             if (_sleepScore.value == 0) {
-                _sleepAdvice.value = "正在根据心率、血氧和步数积累睡眠判断样本..."
+                _sleepAdvice.value = SleepPresentationMapper.COLLECTING_SIGNAL_ADVICE
             }
             return
         }
@@ -1603,7 +1586,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             sleepRepository.insertSleepRecord(record)
-            val trend = sleepRepository.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
+            val trend = SleepPresentationMapper.toTrend(
+                sleepRepository.getRecentSleepRecordsByUser(account, 7)
+            )
 
             withContext(Dispatchers.Main) {
                 _sleepTrend.value = trend
@@ -1630,18 +1615,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             sleepRepository.insertSleepRecord(record)
-            val trend = sleepRepository.getRecentSleepRecordsByUser(account, 7).toSleepTrend()
+            val trend = SleepPresentationMapper.toTrend(
+                sleepRepository.getRecentSleepRecordsByUser(account, 7)
+            )
 
             withContext(Dispatchers.Main) {
                 _sleepScore.value = newScore
                 _sleepData.value = newDataPoints
                 _sleepDetails.value = details
                 _sleepTrend.value = trend
-                _sleepAdvice.value = when {
-                    newScore >= 90 -> "睡眠质量极佳，继续保持！"
-                    newScore >= 70 -> "睡得还不错，建议早点休息。"
-                    else -> "睡眠较浅，睡前试试放下手机。"
-                }
+                _sleepAdvice.value = SleepPresentationMapper.adviceForScore(newScore)
             }
         }
     }
