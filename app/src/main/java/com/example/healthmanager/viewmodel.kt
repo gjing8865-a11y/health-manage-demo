@@ -25,6 +25,7 @@ import com.example.healthmanager.data.remote.WeatherStateMapper
 import com.example.healthmanager.data.remote.WeatherUiState
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
+import com.example.healthmanager.device.Stm32ConnectionMessageFormatter
 import com.example.healthmanager.device.Stm32DeviceSession
 import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32EndpointResolver
@@ -566,7 +567,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         Log.w("STM32_DATA", "数据监听断开，准备重连: ${e.message}", e)
                         withContext(Dispatchers.Main) {
                             if (_isConnected.value) {
-                                _deviceDataText.value = "手环数据通道暂无新数据，正在自动重连...\n${formatStm32Error(e)}"
+                                _deviceDataText.value = "手环数据通道暂无新数据，正在自动重连...\n${Stm32ConnectionMessageFormatter.formatError(e)}"
                             }
                         }
                         delay(900)
@@ -579,7 +580,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Log.e("STM32_DATA", "获取设备数据失败: ${e.message}", e)
                 withContext(Dispatchers.Main) {
                     if (_isConnected.value) {
-                        _deviceDataText.value = "已连上热点，但读取设备接口失败：${formatStm32Error(e)}\n已尝试: ${summarizeStm32Attempts(dataUrls)}"
+                        _deviceDataText.value = "已连上热点，但读取设备接口失败：${Stm32ConnectionMessageFormatter.formatError(e)}\n已尝试: ${Stm32ConnectionMessageFormatter.summarizeAttempts(dataUrls)}"
                     }
                 }
             } finally {
@@ -667,29 +668,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }.trim()
     }
 
-    private fun formatStm32Error(error: Exception): String {
-        val message = error.message.orEmpty()
-        return when {
-            message.contains("CLEARTEXT", ignoreCase = true) -> "系统拦截了本地 HTTP，请安装新版后重试"
-            message.contains("20 秒内没有收到手环推送", ignoreCase = true) -> "20 秒内没有收到手环推送的有效 JSON；请确认手环停留在心率页、已点击 Survey，并且 App 已连接 HRB_AP"
-            message.contains("连续 15 秒没有收到新的心率推送", ignoreCase = true) -> "已收到过数据，但后续 15 秒没有新推送；App 正在重连数据通道"
-            error is java.net.SocketTimeoutException -> "连接 ESP-01S TCP 数据端口超时，请确认单片机已启动 AT+CIPSERVER=1,8080"
-            error.cause is java.net.SocketTimeoutException -> "热点连上了，但 ESP-01S 没有主动推送 JSON；请确认手环心率页正在 Survey 测量"
-            message.contains("没有发现可返回 JSON", ignoreCase = true) -> message
-            message.contains("ECONNREFUSED", ignoreCase = true) -> "热点连上了，但 ESP-01S 的 TCP 8080 数据端口没有打开"
-            message.isNotBlank() -> message
-            else -> error::class.java.simpleName
-        }
-    }
-
-    private fun summarizeStm32Attempts(urls: List<String>): String {
-        val visibleUrls = urls.take(10).joinToString()
-        return if (urls.size > 10) {
-            "$visibleUrls 等 ${urls.size} 个地址"
-        } else {
-            visibleUrls
-        }
-    }
 // endregion
 
     // region 3. 设备连接管理（Wi-Fi / STM32）

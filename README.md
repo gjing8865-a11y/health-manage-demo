@@ -122,6 +122,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract STM32 endpoint resolution and cover it with unit tests.
 - [x] Extract STM32 TCP/HTTP device session and JSON stream parsing.
 - [x] Extract STM32 note payload building and cover it with unit tests.
+- [x] Extract STM32 connection error formatting and cover it with unit tests.
 - [x] Extract deterministic STM32 demo payload generation for hardware-free review.
 - [x] Move food-recognition HTTP calls into a remote data source with fallback tests.
 - [x] Extract food-recognition prompt building and cover it with unit tests.

@@ -55,6 +55,8 @@ The repository now demonstrates more than a small UI demo:
 - TCP JSON stream extraction covered by focused unit tests.
 - STM32 endpoint resolution extracted from the ViewModel and covered by tests.
 - STM32 note-sync payload building extracted and covered by protocol tests.
+- STM32 connection error messaging extracted and covered by troubleshooting
+  tests.
 - Hardware-free demo mode with deterministic factory tests.
 - Food and weather API calls extracted into remote data sources with tests.
 - Food-recognition prompt construction extracted from the ViewModel with tests.

@@ -106,6 +106,8 @@ STM32 device transport now lives under `device/`:
 - `Stm32DeviceSession` owns TCP/HTTP payload streaming and note writes.
 - `Stm32NotePayloadBuilder` owns the line-delimited JSON note payload sent to
   the device.
+- `Stm32ConnectionMessageFormatter` turns low-level TCP/HTTP failures into
+  reviewer-friendly troubleshooting messages.
 - `Stm32JsonStreamExtractor` extracts complete JSON objects from TCP frames.
 - `Stm32PayloadParser`, `Stm32EndpointResolver`, and
   `Stm32DemoPayloadFactory` keep payload parsing, endpoint discovery, and demo
