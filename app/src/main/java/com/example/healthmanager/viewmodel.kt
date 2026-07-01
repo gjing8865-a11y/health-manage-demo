@@ -1782,7 +1782,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val sentAt = System.currentTimeMillis()
-                sendNoteJsonToStm32(
+                stm32DeviceSession.sendNoteJson(
                     content = content,
                     account = account,
                     sentAt = sentAt
@@ -1812,17 +1812,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private suspend fun sendNoteJsonToStm32(
-        content: String,
-        account: String,
-        sentAt: Long
-    ) {
-        stm32DeviceSession.sendNoteJson(
-            content = content,
-            account = account,
-            sentAt = sentAt
-        )
-    }
 // endregion
 
     init {

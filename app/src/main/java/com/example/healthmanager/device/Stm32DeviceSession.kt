@@ -77,12 +77,11 @@ class Stm32DeviceSession(
         sentAt: Long
     ) {
         val socket = awaitWritableSocket()
-        val noteJson = JSONObject().apply {
-            put("type", "note")
-            put("content", content)
-            put("account", account)
-            put("timestamp", sentAt)
-        }.toString() + "\r\n"
+        val noteJson = Stm32NotePayloadBuilder.build(
+            content = content,
+            account = account,
+            sentAt = sentAt
+        )
 
         synchronized(socketWriteLock) {
             if (socket.isClosed || !socket.isConnected) {

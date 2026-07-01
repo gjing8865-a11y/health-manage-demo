@@ -103,6 +103,8 @@ Remote API shaping lives under `data/remote/`:
 STM32 device transport now lives under `device/`:
 
 - `Stm32DeviceSession` owns TCP/HTTP payload streaming and note writes.
+- `Stm32NotePayloadBuilder` owns the line-delimited JSON note payload sent to
+  the device.
 - `Stm32JsonStreamExtractor` extracts complete JSON objects from TCP frames.
 - `Stm32PayloadParser`, `Stm32EndpointResolver`, and
   `Stm32DemoPayloadFactory` keep payload parsing, endpoint discovery, and demo
