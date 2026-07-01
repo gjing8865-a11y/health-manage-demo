@@ -44,6 +44,7 @@ import com.example.healthmanager.domain.SleepSignalSample
 import com.example.healthmanager.domain.SleepTrendPoint
 import com.example.healthmanager.domain.WeatherLocationCandidate
 import com.example.healthmanager.domain.WeeklyDateRangeCalculator
+import com.example.healthmanager.domain.WeeklyStepRecordMapper
 import com.example.healthmanager.model.User
 import com.example.healthmanager.platform.AndroidWeatherLocationResolver
 import com.example.healthmanager.platform.HealthVibrationController
@@ -73,7 +74,6 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
 import com.example.healthmanager.model.NoteRecord
 import com.example.healthmanager.model.FoodRecord
-import com.example.healthmanager.model.WeeklyStepRecord
 import com.example.healthmanager.model.SleepRecord
 import com.example.healthmanager.model.ExerciseRecord
 import android.annotation.SuppressLint
@@ -314,7 +314,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _hasSyncedWeeklyData = MutableStateFlow(false)
     val hasSyncedWeeklyData = _hasSyncedWeeklyData.asStateFlow()
 
-    private val _weeklyStepData = MutableStateFlow(List(7) { 0 })
+    private val _weeklyStepData = MutableStateFlow(WeeklyStepRecordMapper.emptyWeekSteps())
     val weeklyStepData = _weeklyStepData.asStateFlow()
 
     private val _latestExerciseDistance = MutableStateFlow(0f)
@@ -435,18 +435,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             withContext(Dispatchers.Main) {
                 if (record == null) {
-                    _weeklyStepData.value = List(7) { 0 }
+                    _weeklyStepData.value = WeeklyStepRecordMapper.emptyWeekSteps()
                     _hasSyncedWeeklyData.value = false
                 } else {
-                    _weeklyStepData.value = listOf(
-                        record.day1,
-                        record.day2,
-                        record.day3,
-                        record.day4,
-                        record.day5,
-                        record.day6,
-                        record.day7
-                    )
+                    _weeklyStepData.value = WeeklyStepRecordMapper.toDayList(record)
                     _hasSyncedWeeklyData.value = true
                 }
             }
@@ -461,22 +453,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        if (data.size != 7) {
+        if (!WeeklyStepRecordMapper.hasCompleteWeek(data)) {
             resetWeeklyReport()
             return
         }
 
         viewModelScope.launch(Dispatchers.IO) {
-            val record = WeeklyStepRecord(
-                userAccount = account,
+            val record = WeeklyStepRecordMapper.toRecord(
+                account = account,
                 weekRange = _weeklyRange.value,
-                day1 = data[0],
-                day2 = data[1],
-                day3 = data[2],
-                day4 = data[3],
-                day5 = data[4],
-                day6 = data[5],
-                day7 = data[6]
+                steps = data
             )
 
             weeklyStepRepository.insertWeeklyRecord(record)
@@ -489,7 +475,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun resetWeeklyReport() {
-        _weeklyStepData.value = List(7) { 0 }
+        _weeklyStepData.value = WeeklyStepRecordMapper.emptyWeekSteps()
         _hasSyncedWeeklyData.value = false
     }
 

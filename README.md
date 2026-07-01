@@ -118,6 +118,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Fix unit-test task and add GitHub Actions CI.
 - [x] Add architecture notes for portfolio review.
 - [x] Add a repository layer in front of Room DAOs.
+- [x] Extract weekly step record mapping and cover it with unit tests.
 - [x] Extract STM32 payload parsing and cover it with unit tests.
 - [x] Extract STM32 endpoint resolution and cover it with unit tests.
 - [x] Extract STM32 TCP/HTTP device session and JSON stream parsing.

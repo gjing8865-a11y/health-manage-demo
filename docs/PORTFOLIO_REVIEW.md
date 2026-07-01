@@ -50,6 +50,7 @@ The repository now demonstrates more than a small UI demo:
 
 - Compose multi-screen Android app with local persistence.
 - Room-backed health records with a repository layer in front of DAOs.
+- Weekly step Room record mapping extracted and covered by tests.
 - Wi-Fi/TCP device integration with a testable STM32 payload parser.
 - STM32 TCP/HTTP session extracted from the ViewModel.
 - TCP JSON stream extraction covered by focused unit tests.
