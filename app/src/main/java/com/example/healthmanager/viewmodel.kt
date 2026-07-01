@@ -30,6 +30,7 @@ import com.example.healthmanager.device.Stm32DeviceSession
 import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32EndpointResolver
 import com.example.healthmanager.device.Stm32WifiHotspotPolicy
+import com.example.healthmanager.device.Stm32WifiScanSummary
 import com.example.healthmanager.device.WifiAccessPoint
 import com.example.healthmanager.domain.ExerciseSummaryCalculator
 import com.example.healthmanager.domain.FoodStatsCalculator
@@ -763,25 +764,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         _wifiList.value = accessPoints
 
-        val possibleDeviceCount = accessPoints.count { hotspot ->
-            hotspot.ssid.contains("STM32", ignoreCase = true) ||
-                    hotspot.ssid.contains("SmartBand", ignoreCase = true) ||
-                    hotspot.ssid.contains("AI-THINKER", ignoreCase = true) ||
-                    hotspot.ssid.contains("HRB", ignoreCase = true) ||
-                    hotspot.ssid.contains("ESP", ignoreCase = true)
-        }
-
         if (_isConnected.value || _isFetchingDeviceData.value) {
             return
         }
 
-        _deviceDataText.value = when {
-            accessPoints.isEmpty() -> "没有扫描到任何热点，请打开手机 Wi-Fi 和定位服务，并确认 STM32 已开启热点模式；如果 STM32 是隐藏热点，可以手动输入热点名连接。"
-            possibleDeviceCount == 0 && fromCache -> "系统限制了本次主动扫描，已展示最近一次扫描结果。若 STM32 仍不在列表中，可直接手动输入热点名连接。"
-            possibleDeviceCount == 0 -> "已扫描到 ${accessPoints.size} 个热点，但没有明显的 STM32 热点，请检查 STM32 热点名称，或直接手动输入热点名连接。"
-            fromCache -> "系统限制了本次主动扫描，已展示最近一次扫描结果，并发现 $possibleDeviceCount 个疑似设备热点。"
-            else -> "已发现 $possibleDeviceCount 个疑似设备热点，点击列表项即可尝试连接。"
-        }
+        _deviceDataText.value = Stm32WifiScanSummary.buildMessage(
+            accessPoints = accessPoints,
+            fromCache = fromCache
+        )
     }
 
     @SuppressLint("MissingPermission")

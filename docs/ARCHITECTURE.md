@@ -108,6 +108,8 @@ STM32 device transport now lives under `device/`:
   the device.
 - `Stm32ConnectionMessageFormatter` turns low-level TCP/HTTP failures into
   reviewer-friendly troubleshooting messages.
+- `Stm32WifiScanSummary` explains Wi-Fi scan results and reuses the shared
+  STM32 hotspot-name policy.
 - `Stm32JsonStreamExtractor` extracts complete JSON objects from TCP frames.
 - `Stm32PayloadParser`, `Stm32EndpointResolver`, and
   `Stm32DemoPayloadFactory` keep payload parsing, endpoint discovery, and demo
