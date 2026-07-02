@@ -34,6 +34,7 @@ import com.example.healthmanager.device.Stm32WifiScanSummary
 import com.example.healthmanager.device.WifiAccessPoint
 import com.example.healthmanager.domain.ExerciseSummaryCalculator
 import com.example.healthmanager.domain.FoodStatsCalculator
+import com.example.healthmanager.domain.HealthDateFormatter
 import com.example.healthmanager.domain.HeartRateAlertPolicy
 import com.example.healthmanager.domain.HeartRateAlertState
 import com.example.healthmanager.domain.SleepEstimate
@@ -68,8 +69,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CancellationException
 import java.util.concurrent.TimeUnit
@@ -656,7 +655,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _deviceDataText.value = buildString {
-            val updatedAt = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+            val updatedAt = HealthDateFormatter.deviceSyncTime()
             appendLine("同步完成")
             appendLine("心率: ${_heartRate.value} bpm")
             appendLine("血氧: ${_bloodOxygen.value} %")
@@ -1120,7 +1119,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun refreshFoodStats(records: List<FoodRecord>) {
-        val today = SimpleDateFormat("M月d日", Locale.CHINA).format(Date())
+        val today = HealthDateFormatter.foodDate()
         val summary = FoodStatsCalculator.build(records, today)
 
         _foodList.value = summary.records
@@ -1344,8 +1343,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val account = _currentUserAccount.value ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            val timeString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            val dateString = SimpleDateFormat("M月d日", Locale.CHINA).format(Date())
+            val timeString = HealthDateFormatter.foodTime()
+            val dateString = HealthDateFormatter.foodDate()
 
             for (item in pendingList) {
                 val fingerprint = "${_selectedMealType.value}|${item.name}|${item.kcal}"
@@ -1397,8 +1396,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val account = _currentUserAccount.value ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            val timeString = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-            val dateString = SimpleDateFormat("M月d日", Locale.CHINA).format(Date())
+            val timeString = HealthDateFormatter.foodTime()
+            val dateString = HealthDateFormatter.foodDate()
 
             val record = FoodRecord(
                 userAccount = account,
@@ -1551,7 +1550,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val account = _currentUserAccount.value ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(timestamp))
+            val date = HealthDateFormatter.sleepRecordDate(timestamp)
             val record = SleepRecord(
                 userAccount = account,
                 date = date,
@@ -1579,7 +1578,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val account = _currentUserAccount.value ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            val today = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            val today = HealthDateFormatter.sleepRecordDate()
             val packedData = newDataPoints.joinToString(",")
 
             val record = SleepRecord(

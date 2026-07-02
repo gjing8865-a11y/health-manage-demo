@@ -1,8 +1,5 @@
 package com.example.healthmanager.domain
 
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.math.abs
 
 data class SleepSignalSample(
@@ -133,6 +130,6 @@ object SleepEstimateCalculator {
     }
 
     private fun formatShortTime(timestamp: Long): String {
-        return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(timestamp))
+        return HealthDateFormatter.shortTime(timestamp)
     }
 }

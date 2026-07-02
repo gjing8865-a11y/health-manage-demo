@@ -139,6 +139,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract food nutrition statistics and cover them with unit tests.
 - [x] Extract heart-rate alert policy and cover it with unit tests.
 - [x] Extract account input validation and profile defaults with unit tests.
+- [x] Extract shared health date/time formatting and cover it with unit tests.
 - [x] Extract Android Wi-Fi, vibration, and geocoder API adapters from the ViewModel.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.

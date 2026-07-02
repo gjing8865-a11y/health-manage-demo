@@ -78,6 +78,7 @@ The repository now demonstrates more than a small UI demo:
 - Heart-rate alert timing extracted into a domain policy with tests.
 - Account input validation and profile default handling extracted into a domain
   policy with tests.
+- Shared health date/time formatting extracted with timezone-aware tests.
 - Android Wi-Fi, vibration, and geocoder compatibility code isolated in a
   platform adapter layer.
 - GitHub Actions CI for debug build and unit tests.
