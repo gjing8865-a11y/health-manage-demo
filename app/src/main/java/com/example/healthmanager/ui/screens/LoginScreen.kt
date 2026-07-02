@@ -17,6 +17,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.healthmanager.domain.UserAccountPolicy
 import com.example.healthmanager.ui.theme.*
 import com.example.healthmanager.viewmodel.MainViewModel
 
@@ -131,14 +132,14 @@ fun LoginScreen(
 
         Button(
             onClick = {
+                val validation = UserAccountPolicy.validateLogin(account, password)
                 when {
-                    account.isBlank() -> errorText = "请输入账号"
-                    password.isBlank() -> errorText = "请输入密码"
+                    !validation.isValid -> errorText = validation.errorMessage.orEmpty()
                     else -> {
                         isLoading = true
                         viewModel.loginUser(
-                            account = account.trim(),
-                            password = password,
+                            account = validation.account,
+                            password = validation.password,
                             onSuccess = {
                                 isLoading = false
                                 onLoginSuccess()
@@ -326,19 +327,20 @@ fun RegisterScreen(
 
         Button(
             onClick = {
+                val validation = UserAccountPolicy.validateRegistration(
+                    account = account,
+                    password = password,
+                    nickName = nickName,
+                    confirmPassword = confirmPassword
+                )
                 when {
-                    account.isBlank() -> errorText = "请输入账号"
-                    nickName.isBlank() -> errorText = "请输入昵称"
-                    password.isBlank() -> errorText = "请输入密码"
-                    confirmPassword.isBlank() -> errorText = "请再次输入密码"
-                    password != confirmPassword -> errorText = "两次输入的密码不一致"
-                    password.length < 6 -> errorText = "密码长度不能少于 6 位"
+                    !validation.isValid -> errorText = validation.errorMessage.orEmpty()
                     else -> {
                         isLoading = true
                         viewModel.registerUser(
-                            account = account.trim(),
-                            password = password,
-                            nickName = nickName.trim(),
+                            account = validation.account,
+                            password = validation.password,
+                            nickName = validation.nickName,
                             onSuccess = {
                                 isLoading = false
                                 onRegisterSuccess()

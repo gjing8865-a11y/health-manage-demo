@@ -56,8 +56,7 @@ app/src/main/java/com/example/healthmanager
 +-- platform/                       # Android system API adapters
 +-- model/                          # Room entities
 +-- ui/screens/                     # Compose feature screens
-+-- ui/theme/                       # Compose theme
-`-- Manage/                         # Device-related helpers
+`-- ui/theme/                       # Compose theme
 ```
 
 The current code works, but `viewmodel.kt` is intentionally listed as a refactor target. Repository, remote data source, and domain-calculation extractions are already in place; the next architecture step is to split the remaining screen orchestration into smaller feature ViewModels.
@@ -139,6 +138,7 @@ For portfolio review, the device screen also includes a demo mode that simulates
 - [x] Extract weekly date-range calculation and cover it with unit tests.
 - [x] Extract food nutrition statistics and cover them with unit tests.
 - [x] Extract heart-rate alert policy and cover it with unit tests.
+- [x] Extract account input validation and profile defaults with unit tests.
 - [x] Extract Android Wi-Fi, vibration, and geocoder API adapters from the ViewModel.
 - [ ] Split the large ViewModel into feature ViewModels, repositories, and data sources.
 - [x] Add demo mode for hardware-free review.

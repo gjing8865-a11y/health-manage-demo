@@ -42,6 +42,7 @@ import com.example.healthmanager.domain.SleepHardwareDetails
 import com.example.healthmanager.domain.SleepPresentationMapper
 import com.example.healthmanager.domain.SleepSignalSample
 import com.example.healthmanager.domain.SleepTrendPoint
+import com.example.healthmanager.domain.UserAccountPolicy
 import com.example.healthmanager.domain.WeatherLocationCandidate
 import com.example.healthmanager.domain.WeeklyDateRangeCalculator
 import com.example.healthmanager.domain.WeeklyStepRecordMapper
@@ -132,28 +133,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val currentUserAccount = _currentUserAccount.asStateFlow()
 
     // region 1. 用户个人资料
-    private val _userName = MutableStateFlow("Alex")
+    private val _userName = MutableStateFlow(UserAccountPolicy.DEFAULT_DISPLAY_NAME)
     val userName = _userName.asStateFlow()
 
-    private val _userSignature = MutableStateFlow("保持活力!")
+    private val _userSignature = MutableStateFlow(UserAccountPolicy.DEFAULT_SIGNATURE)
     val userSignature = _userSignature.asStateFlow()
 
     private val _avatarUri = MutableStateFlow<Uri?>(null)
     val avatarUri = _avatarUri.asStateFlow()
 
     fun updateUserName(newName: String) {
-        _userName.value = newName
+        val normalizedName = UserAccountPolicy.normalizeDisplayName(newName)
+        _userName.value = normalizedName
         val acc = requireLoggedInAccount() ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            userRepository.updateNickName(acc, newName)
+            userRepository.updateNickName(acc, normalizedName)
         }
     }
 
     fun updateUserSignature(newSignature: String) {
-        _userSignature.value = newSignature
+        val normalizedSignature = UserAccountPolicy.normalizeSignature(newSignature)
+        _userSignature.value = normalizedSignature
         val acc = requireLoggedInAccount() ?: return
         viewModelScope.launch(Dispatchers.IO) {
-            userRepository.updateSignature(acc, newSignature)
+            userRepository.updateSignature(acc, normalizedSignature)
         }
     }
 
@@ -175,19 +178,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val existingUser = userRepository.getUserByAccount(account)
+                val validation = UserAccountPolicy.validateRegistration(
+                    account = account,
+                    password = password,
+                    nickName = nickName
+                )
+                if (!validation.isValid) {
+                    withContext(Dispatchers.Main) {
+                        onError(validation.errorMessage.orEmpty())
+                    }
+                    return@launch
+                }
+
+                val existingUser = userRepository.getUserByAccount(validation.account)
                 if (existingUser != null) {
                     withContext(Dispatchers.Main) {
                         onError("该账号已存在")
                     }
                     return@launch
                 }
-                val user = User(
-                    account = account,
-                    password = password,
-                    nickName = nickName,
-                    avatarUri = "",
-                    signature = "保持活力!"
+                val user = UserAccountPolicy.createUser(
+                    account = validation.account,
+                    password = validation.password,
+                    nickName = validation.nickName
                 )
                 userRepository.registerUser(user)
 
@@ -210,7 +223,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val user = userRepository.loginAndGetUser(account, password)
+                val validation = UserAccountPolicy.validateLogin(account, password)
+                if (!validation.isValid) {
+                    withContext(Dispatchers.Main) {
+                        onError(validation.errorMessage.orEmpty())
+                    }
+                    return@launch
+                }
+
+                val user = userRepository.loginAndGetUser(validation.account, validation.password)
                 if (user == null) {
                     withContext(Dispatchers.Main) {
                         onError("账号或密码错误")
@@ -265,8 +286,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun logout() {
         prefs.edit().remove(KEY_LOGGED_IN_ACCOUNT).apply()
         _currentUserAccount.value = null
-        _userName.value = "Alex"
-        _userSignature.value = "保持活力!"
+        _userName.value = UserAccountPolicy.DEFAULT_DISPLAY_NAME
+        _userSignature.value = UserAccountPolicy.DEFAULT_SIGNATURE
         _avatarUri.value = null
 
         resetWeeklyReport()
@@ -299,8 +320,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun loadUserProfile(user: User) {
         withContext(Dispatchers.Main) {
-            _userName.value = user.nickName
-            _userSignature.value = user.signature
+            _userName.value = UserAccountPolicy.normalizeDisplayName(user.nickName)
+            _userSignature.value = UserAccountPolicy.normalizeSignature(user.signature)
             _avatarUri.value = if (user.avatarUri.isBlank()) null else Uri.parse(user.avatarUri)
         }
     }

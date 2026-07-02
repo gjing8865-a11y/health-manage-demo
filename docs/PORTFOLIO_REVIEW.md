@@ -76,6 +76,8 @@ The repository now demonstrates more than a small UI demo:
 - Weekly report/exercise date ranges extracted into a Monday-started domain
   calculator with tests.
 - Heart-rate alert timing extracted into a domain policy with tests.
+- Account input validation and profile default handling extracted into a domain
+  policy with tests.
 - Android Wi-Fi, vibration, and geocoder compatibility code isolated in a
   platform adapter layer.
 - GitHub Actions CI for debug build and unit tests.

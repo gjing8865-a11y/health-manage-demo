@@ -90,6 +90,7 @@ Pure domain logic now lives under `domain/`:
 - weekly step record mapping between Room rows and 7-day dashboard data
 - food calorie and macronutrient statistics
 - sustained high-heart-rate alert policy
+- account input validation and safe profile defaults
 - weather location candidate resolution
 
 Remote API shaping lives under `data/remote/`:
@@ -167,7 +168,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `MainViewModel` still owns too many responsibilities.
-- Sleep estimation, sleep presentation mapping, exercise, weekly date ranges, weekly step mapping, food-summary, heart-rate alert, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
+- Sleep estimation, sleep presentation mapping, exercise, weekly date ranges, weekly step mapping, food-summary, heart-rate alert, account validation/profile defaults, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - A short demo GIF or video would make the README even easier to scan.
