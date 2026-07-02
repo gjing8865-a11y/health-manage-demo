@@ -34,6 +34,8 @@ import com.example.healthmanager.device.Stm32WifiHotspotPolicy
 import com.example.healthmanager.device.Stm32WifiScanSummary
 import com.example.healthmanager.device.WifiAccessPoint
 import com.example.healthmanager.domain.ExerciseSummaryCalculator
+import com.example.healthmanager.domain.FoodSaveDeduplicationPolicy
+import com.example.healthmanager.domain.FoodSaveDeduplicationState
 import com.example.healthmanager.domain.FoodStatsCalculator
 import com.example.healthmanager.domain.HealthDateFormatter
 import com.example.healthmanager.domain.HeartRateAlertPolicy
@@ -1094,8 +1096,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var lastAttemptBitmap: Bitmap? = null
 
-    private var lastSavedFoodFingerprint: String? = null
-    private var lastSavedFoodTimeMillis: Long = 0L
+    private var foodSaveDeduplicationState = FoodSaveDeduplicationState()
 
 
 
@@ -1337,12 +1338,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val dateString = HealthDateFormatter.foodDate()
 
             for (item in pendingList) {
-                val fingerprint = "${_selectedMealType.value}|${item.name}|${item.kcal}"
                 val now = System.currentTimeMillis()
+                val deduplicationDecision = FoodSaveDeduplicationPolicy.evaluate(
+                    state = foodSaveDeduplicationState,
+                    mealType = _selectedMealType.value,
+                    foodName = item.name,
+                    kcal = item.kcal,
+                    nowMillis = now
+                )
 
-                if (lastSavedFoodFingerprint == fingerprint &&
-                    now - lastSavedFoodTimeMillis < 2 * 60 * 1000
-                ) {
+                if (!deduplicationDecision.shouldSave) {
                     continue
                 }
 
@@ -1360,9 +1365,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 foodRepository.insertFoodRecord(record)
-
-                lastSavedFoodFingerprint = fingerprint
-                lastSavedFoodTimeMillis = now
+                foodSaveDeduplicationState = deduplicationDecision.nextState
             }
 
             val records = foodRepository.getFoodRecordsByUser(account)

@@ -89,6 +89,7 @@ Pure domain logic now lives under `domain/`:
 - Monday-started weekly date range calculation for reports and exercise stats
 - weekly step record mapping between Room rows and 7-day dashboard data
 - food calorie and macronutrient statistics
+- food-save deduplication for confirmed recognition results
 - sustained high-heart-rate alert policy
 - account input validation and safe profile defaults
 - shared date/time labels for device sync, food logs, and sleep records
@@ -171,7 +172,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `MainViewModel` still owns too many responsibilities.
-- Sleep estimation, sleep presentation mapping, exercise, weekly date ranges, weekly step mapping, food-summary, heart-rate alert, account validation/profile defaults, health date/time formatting, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, STM32 transport, and STM32 sync-result formatting have been extracted, but screen-level state still needs feature ViewModels.
+- Sleep estimation, sleep presentation mapping, exercise, weekly date ranges, weekly step mapping, food-summary, food-save deduplication, heart-rate alert, account validation/profile defaults, health date/time formatting, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, STM32 transport, and STM32 sync-result formatting have been extracted, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - A short demo GIF or video would make the README even easier to scan.
