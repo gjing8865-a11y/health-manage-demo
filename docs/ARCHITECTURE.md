@@ -109,6 +109,8 @@ STM32 device transport now lives under `device/`:
 - `Stm32DeviceSession` owns TCP/HTTP payload streaming and note writes.
 - `Stm32NotePayloadBuilder` owns the line-delimited JSON note payload sent to
   the device.
+- `Stm32DeviceSyncSummary` formats the reviewer-facing sync result after a
+  payload updates vitals, sleep, battery, and weekly-step state.
 - `Stm32ConnectionMessageFormatter` turns low-level TCP/HTTP failures into
   reviewer-friendly troubleshooting messages.
 - `Stm32WifiScanSummary` explains Wi-Fi scan results and reuses the shared
@@ -169,7 +171,7 @@ Recommended next cuts:
 ## Known Technical Debt
 
 - `MainViewModel` still owns too many responsibilities.
-- Sleep estimation, sleep presentation mapping, exercise, weekly date ranges, weekly step mapping, food-summary, heart-rate alert, account validation/profile defaults, health date/time formatting, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, and STM32 transport have been extracted, but screen-level state still needs feature ViewModels.
+- Sleep estimation, sleep presentation mapping, exercise, weekly date ranges, weekly step mapping, food-summary, heart-rate alert, account validation/profile defaults, health date/time formatting, weather-location calculations, weather response mapping, food-recognition mapping, Android platform API wrappers, STM32 transport, and STM32 sync-result formatting have been extracted, but screen-level state still needs feature ViewModels.
 - Room schema export is enabled; historical migrations before v9 still need source schema history if upgrade support is required.
 - Release builds still need production API-key handling, release signing, and privacy notes.
 - A short demo GIF or video would make the README even easier to scan.

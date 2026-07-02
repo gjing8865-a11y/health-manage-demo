@@ -59,6 +59,7 @@ The repository now demonstrates more than a small UI demo:
 - STM32 connection error messaging extracted and covered by troubleshooting
   tests.
 - STM32 Wi-Fi scan summary messaging extracted and covered by tests.
+- STM32 device sync-result summary formatting extracted and covered by tests.
 - Hardware-free demo mode with deterministic factory tests.
 - Food and weather API calls extracted into remote data sources with tests.
 - Food-recognition prompt construction extracted from the ViewModel with tests.

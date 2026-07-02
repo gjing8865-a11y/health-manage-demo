@@ -26,6 +26,7 @@ import com.example.healthmanager.data.remote.WeatherUiState
 import com.example.healthmanager.database.AppDatabase
 import com.example.healthmanager.device.Stm32DemoPayloadFactory
 import com.example.healthmanager.device.Stm32ConnectionMessageFormatter
+import com.example.healthmanager.device.Stm32DeviceSyncSummary
 import com.example.healthmanager.device.Stm32DeviceSession
 import com.example.healthmanager.device.Stm32DevicePayload
 import com.example.healthmanager.device.Stm32EndpointResolver
@@ -654,25 +655,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
 
-        _deviceDataText.value = buildString {
-            val updatedAt = HealthDateFormatter.deviceSyncTime()
-            appendLine("同步完成")
-            appendLine("心率: ${_heartRate.value} bpm")
-            appendLine("血氧: ${_bloodOxygen.value} %")
-            appendLine("更新时间: $updatedAt")
-            appendLine("步数: ${_steps.value}")
-            _batteryLevel.value?.let { appendLine("电量: $it%") }
-            if (sleepPayload != null) {
-                appendLine("睡眠评分: ${sleepPayload.score}")
-            } else {
-                appendLine("睡眠数据: 已根据心率和步数自动估算")
-            }
-            if (payload.weeklySteps.size == 7) {
-                append("周步数: ${payload.weeklySteps.joinToString()}")
-            } else {
-                append("周报数据: STM32 暂未返回完整的 7 天步数")
-            }
-        }.trim()
+        _deviceDataText.value = Stm32DeviceSyncSummary.build(
+            heartRate = _heartRate.value,
+            bloodOxygen = _bloodOxygen.value,
+            steps = _steps.value,
+            batteryLevel = _batteryLevel.value,
+            sleepScore = sleepPayload?.score,
+            weeklySteps = payload.weeklySteps
+        )
     }
 
 // endregion
